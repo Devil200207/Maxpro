@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-brand-50: #fbf2f5;
+  --color-brand-100: #f5e1e8;
+  --color-brand-200: #ebc3d1;
+  --color-brand-500: #a3214f;
+  --color-brand-600: #8a1538; /* Qatar maroon */
+  --color-brand-700: #73102e;
+  --color-brand-800: #5c0d25;
+  --color-brand-900: #3f0819;
+  --color-gold-400: #d4b26a;
+  --color-gold-500: #c59d48;
+  --color-wa-500: #25d366;
+  --color-wa-600: #1ebe5a;
+  --color-wa-700: #128c4b;
+  --color-wa-chat: #efeae2;
+  --font-sans: var(--font-latin), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+}
+
+html[dir="rtl"] {
+  --font-sans-order: var(--font-arabic);
+}
+html[dir="rtl"] body {
+  font-family: var(--font-arabic), var(--font-latin), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #f8f7f6;
+  color: #1c1917;
+}
+
+/* Flip directional icons (arrows, chevrons) in RTL. */
+html[dir="rtl"] .flip-rtl {
+  transform: scaleX(-1);
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.leaflet-container {
+  font-family: inherit;
+}

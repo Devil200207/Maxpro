@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" font-family="Arial, sans-serif">
+  <rect width="800" height="600" fill="#fbfaf8"/>
+  <g fill="none" stroke="#1c1917" stroke-width="6">
+    <rect x="60" y="60" width="680" height="480"/>
+    <line x1="340" y1="60" x2="340" y2="300"/>
+    <line x1="60" y1="300" x2="520" y2="300"/>
+    <line x1="520" y1="300" x2="520" y2="540"/>
+    <line x1="520" y1="60" x2="520" y2="230"/>
+    <line x1="200" y1="300" x2="200" y2="540"/>
+  </g>
+  <g stroke="#fbfaf8" stroke-width="8">
+    <line x1="340" y1="200" x2="340" y2="250"/>
+    <line x1="400" y1="300" x2="450" y2="300"/>
+    <line x1="120" y1="300" x2="170" y2="300"/>
+    <line x1="520" y1="360" x2="520" y2="410"/>
+    <line x1="520" y1="160" x2="520" y2="210"/>
+  </g>
+  <g fill="#78716c" font-size="20" text-anchor="middle">
+    <text x="200" y="175">BEDROOM 1</text><text x="200" y="200" font-size="15">4.6 × 4.0 m</text>
+    <text x="430" y="175">BEDROOM 2</text><text x="430" y="200" font-size="15">3.8 × 3.6 m</text>
+    <text x="630" y="140">KITCHEN</text><text x="630" y="165" font-size="15">3.2 × 3.0 m</text>
+    <text x="360" y="420">LIVING / DINING</text><text x="360" y="445" font-size="15">6.4 × 5.2 m</text>
+    <text x="130" y="420">BATH</text><text x="130" y="445" font-size="15">2.4 × 2.2 m</text>
+    <text x="630" y="400">BALCONY</text><text x="630" y="425" font-size="15">4.0 × 2.0 m</text>
+  </g>
+  <text x="400" y="580" fill="#a8a29e" font-size="14" text-anchor="middle">Indicative floor plan — not to scale</text>
+</svg>
