@@ -28,11 +28,14 @@ function shortPrice(l: Listing) {
 }
 
 function pillIcon(text: string, active: boolean, premium: boolean) {
-  const bg = active ? "#1c1917" : premium ? "#c59d48" : "#8a1538";
+  // Brand blue; premium in logo navy; hovered card's pin inverts to white.
+  const bg = active ? "#ffffff" : premium ? "#042048" : "#0068e6";
+  const fg = active ? "#0068e6" : "#ffffff";
+  const ring = active ? "#0068e6" : "#ffffff";
   return L.divIcon({
     className: "",
     iconSize: [0, 0],
-    html: `<div style="width:max-content;transform:translate(-50%,-100%);background:${bg};color:#fff;font:600 12px/1 system-ui,sans-serif;padding:6px 9px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);border:2px solid #fff;${active ? "z-index:1000;scale:1.15;" : ""}">QAR ${text}</div>`,
+    html: `<div style="width:max-content;transform:translate(-50%,-100%);background:${bg};color:${fg};font:600 12px/1 system-ui,sans-serif;padding:6px 9px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);border:2px solid ${ring};${active ? "z-index:1000;scale:1.15;" : ""}">QAR ${text}</div>`,
   });
 }
 
@@ -94,7 +97,7 @@ function poiIcon(kind: Poi["kind"]) {
 const homeIcon = L.divIcon({
   className: "",
   iconSize: [0, 0],
-  html: `<div style="transform:translate(-50%,-100%)"><svg width="34" height="44" viewBox="0 0 34 44"><path d="M17 0C7.6 0 0 7.6 0 17c0 12.8 17 27 17 27s17-14.2 17-27C34 7.6 26.4 0 17 0z" fill="#8a1538"/><circle cx="17" cy="17" r="7" fill="#fff"/></svg></div>`,
+  html: `<div style="transform:translate(-50%,-100%)"><svg width="34" height="44" viewBox="0 0 34 44"><path d="M17 0C7.6 0 0 7.6 0 17c0 12.8 17 27 17 27s17-14.2 17-27C34 7.6 26.4 0 17 0z" fill="#0068e6"/><circle cx="17" cy="17" r="7" fill="#fff"/></svg></div>`,
 });
 
 /** Single listing pin with nearby points of interest (listing detail page). */

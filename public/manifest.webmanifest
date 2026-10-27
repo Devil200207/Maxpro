@@ -3,7 +3,7 @@
   "short_name": "MaxPro",
   "start_url": "/en",
   "display": "standalone",
-  "background_color": "#f8f7f6",
-  "theme_color": "#8a1538",
+  "background_color": "#ffffff",
+  "theme_color": "#0068e6",
   "icons": [{ "src": "/img/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

@@ -1,20 +1,40 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-brand-50: #fbf2f5;
-  --color-brand-100: #f5e1e8;
-  --color-brand-200: #ebc3d1;
-  --color-brand-500: #a3214f;
-  --color-brand-600: #8a1538; /* Qatar maroon */
-  --color-brand-700: #73102e;
-  --color-brand-800: #5c0d25;
-  --color-brand-900: #3f0819;
-  --color-gold-400: #d4b26a;
-  --color-gold-500: #c59d48;
+  /* MaxPro Technology brand — sampled from the logo: blue #0072F8, navy #042048 */
+  --color-brand-50: #eef5ff;
+  --color-brand-100: #d9e9ff;
+  --color-brand-200: #b5d4ff;
+  --color-brand-300: #84b8ff;
+  --color-brand-400: #3d93ff;
+  --color-brand-500: #0072f8; /* logo blue */
+  --color-brand-600: #0068e6; /* buttons — AA contrast with white text */
+  --color-brand-700: #0055c2;
+  --color-brand-800: #0a3d8a;
+  --color-brand-900: #042048; /* logo navy */
+  --color-navy-800: #0b2d5c;
+  --color-navy-900: #042048;
+  --color-navy-950: #021631;
+  --color-accent-300: #a9d1ff;
+  --color-accent-400: #7cbaff;
   --color-wa-500: #25d366;
   --color-wa-600: #1ebe5a;
   --color-wa-700: #128c4b;
   --color-wa-chat: #efeae2;
+
+  /* Cool slate greys instead of warm stone, to suit the blue-and-white palette */
+  --color-stone-50: #f8fafc;
+  --color-stone-100: #f1f5f9;
+  --color-stone-200: #e2e8f0;
+  --color-stone-300: #cbd5e1;
+  --color-stone-400: #94a3b8;
+  --color-stone-500: #64748b;
+  --color-stone-600: #475569;
+  --color-stone-700: #334155;
+  --color-stone-800: #1e293b;
+  --color-stone-900: #0f172a;
+  --color-stone-950: #020617;
+
   --font-sans: var(--font-latin), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -26,8 +46,8 @@ html[dir="rtl"] body {
 }
 
 body {
-  background: #f8f7f6;
-  color: #1c1917;
+  background: #f7f9fc;
+  color: #0f172a;
 }
 
 /* Flip directional icons (arrows, chevrons) in RTL. */

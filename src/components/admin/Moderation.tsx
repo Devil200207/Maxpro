@@ -407,7 +407,7 @@ export function Verification() {
                     <div className={cn("relative h-20 p-2", doc.kind === "id" ? "bg-gradient-to-br from-brand-700 to-brand-900" : "bg-gradient-to-br from-stone-100 to-stone-200")}>
                       {doc.kind === "id" ? (
                         <>
-                          <IdCard className="h-5 w-5 text-gold-400" />
+                          <IdCard className="h-5 w-5 text-accent-400" />
                           <div className="mt-1.5 h-1.5 w-16 rounded bg-white/40" />
                           <div className="mt-1 h-1.5 w-10 rounded bg-white/25" />
                           <div className="absolute bottom-2 end-2 h-8 w-7 rounded bg-white/30" />

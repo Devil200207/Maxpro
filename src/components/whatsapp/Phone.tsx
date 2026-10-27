@@ -57,12 +57,7 @@ export function Phone({
         {/* Header */}
         <div className="flex items-center gap-2 bg-[#008069] px-3 pb-2.5 pt-7 text-white">
           <ArrowLeft className="flip-rtl h-5 w-5" />
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-white">
-            <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden>
-              <rect width="32" height="32" rx="8" fill="#8a1538" />
-              <path d="M7 23V11l5 6 4-6 4 6 5-6v12" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
+          <Image src="/img/icon.svg" alt="" width={36} height={36} unoptimized className="h-9 w-9 rounded-full" />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="flex items-center gap-1 text-[15px] font-semibold">
               MaxPro <BadgeCheck className="h-4 w-4 fill-[#25d366] text-[#008069]" />

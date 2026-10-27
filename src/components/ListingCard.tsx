@@ -22,7 +22,7 @@ export function ListingCard({ l, compact = false, onHover }: { l: Listing; compa
       onMouseLeave={() => onHover?.(null)}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:shadow-md",
-        l.promotion === "premium" ? "border-amber-300 ring-1 ring-amber-200" : "border-stone-200",
+        l.promotion === "premium" ? "border-brand-300 ring-1 ring-brand-200" : "border-stone-200",
       )}
     >
       <Link href={href(`/listing/${l.id}`)} className="relative block aspect-[4/3] overflow-hidden bg-stone-100">

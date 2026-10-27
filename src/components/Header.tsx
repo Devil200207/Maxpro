@@ -58,7 +58,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:gap-4 sm:px-6">
         <Link href={href("/")} aria-label="MaxPro home" className="shrink-0">
-          <Logo />
+          <Logo className="h-9 w-auto sm:h-11" />
         </Link>
 
         <nav className="ms-6 hidden items-center gap-1 lg:flex">

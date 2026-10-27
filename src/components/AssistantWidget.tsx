@@ -209,7 +209,7 @@ export function AssistantWidget() {
           aria-label={t("Ask MaxPro AI", "اسأل مساعد ماكس برو")}
           className="fixed bottom-24 end-4 z-50 flex items-center gap-2 rounded-full bg-brand-600 p-3.5 text-sm font-semibold text-white shadow-xl ring-4 ring-brand-600/15 transition hover:bg-brand-700 lg:bottom-5 lg:end-5 lg:py-3 lg:pe-5 lg:ps-4"
         >
-          <Sparkles className="h-5 w-5 text-gold-400" />
+          <Sparkles className="h-5 w-5 text-accent-400" />
           <span className="max-lg:hidden">{t("Ask MaxPro AI", "اسأل مساعد ماكس برو")}</span>
         </button>
       )}

@@ -32,7 +32,7 @@ const tones = {
   violet: "bg-violet-50 text-violet-700",
   wa: "bg-wa-500/10 text-wa-700",
   solid: "bg-brand-600 text-white",
-  premium: "bg-amber-400 text-amber-950",
+  premium: "bg-navy-900 text-white",
   white: "bg-white/90 text-stone-800",
   none: "",
 };

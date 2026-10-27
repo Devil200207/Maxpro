@@ -95,11 +95,11 @@ export default function Home() {
       {/* Hero */}
       <section className="relative isolate overflow-hidden">
         <Image src="/img/ext-8.jpg" alt="" fill priority sizes="100vw" className="-z-10 object-cover" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-stone-950/70 via-stone-950/55 to-stone-950/80" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-navy-950/75 via-navy-950/55 to-navy-950/80" />
         <div className="mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
           <div className="max-w-2xl">
             <Badge tone="none" className="bg-white/15 text-white ring-1 ring-white/25 backdrop-blur">
-              <Sparkles className="h-3 w-3 text-gold-400" />
+              <Sparkles className="h-3 w-3 text-accent-400" />
               {t("WhatsApp-first · AI-assisted", "تواصل عبر واتساب · بمساعدة الذكاء الاصطناعي")}
             </Badge>
             <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
@@ -185,7 +185,7 @@ export default function Home() {
 
           <div className="mt-6 flex flex-wrap gap-6 text-sm text-stone-200">
             <span className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-gold-400" />
+              <ShieldCheck className="h-4 w-4 text-accent-400" />
               {t("Verified advertisers & permits", "معلنون وتراخيص موثقة")}
             </span>
             <span className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export default function Home() {
 
       {/* WhatsApp + AI strip */}
       <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6">
-        <div className="grid grid-cols-1 overflow-hidden rounded-3xl bg-stone-900 text-white lg:grid-cols-2">
+        <div className="grid grid-cols-1 overflow-hidden rounded-3xl bg-navy-900 text-white lg:grid-cols-2">
           <div className="p-8 sm:p-10">
             <Badge tone="none" className="bg-wa-500/20 text-wa-500">
               <MessageCircle className="h-3 w-3" />
@@ -388,7 +388,7 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6">
         <div className="relative overflow-hidden rounded-3xl bg-brand-600 px-8 py-10 text-white sm:px-12">
           <div className="absolute -end-16 -top-16 h-64 w-64 rounded-full bg-white/10" />
-          <div className="absolute -bottom-20 end-32 h-48 w-48 rounded-full bg-gold-400/20" />
+          <div className="absolute -bottom-20 end-32 h-48 w-48 rounded-full bg-accent-400/20" />
           <div className="relative flex flex-wrap items-center justify-between gap-6">
             <div className="max-w-xl">
               <h2 className="text-2xl font-bold sm:text-3xl">{t("Advertise with MaxPro", "أعلن مع ماكس برو")}</h2>

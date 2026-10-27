@@ -107,7 +107,7 @@ export default async function DemoPage({ params }: PageProps<"/[lang]/demo">) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-8 text-white sm:p-10">
-        <div className="text-sm font-semibold uppercase tracking-wider text-gold-400">MPT-PRJ-REQ-003 · {t("Interactive prototype", "نموذج تفاعلي")}</div>
+        <div className="text-sm font-semibold uppercase tracking-wider text-accent-400">MPT-PRJ-REQ-003 · {t("Interactive prototype", "نموذج تفاعلي")}</div>
         <h1 className="mt-2 text-3xl font-bold sm:text-4xl">{t("Demo guide", "دليل العرض")}</h1>
         <p className="mt-3 max-w-2xl text-brand-100">
           {t(

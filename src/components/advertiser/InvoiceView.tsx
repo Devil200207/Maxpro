@@ -26,7 +26,7 @@ export function InvoiceView({ inv }: { inv: Invoice }) {
       <style>{`@media print { body * { visibility: hidden !important; } #invoice-print, #invoice-print * { visibility: visible !important; } #invoice-print { position: absolute; inset: 0 auto auto 0; width: 100%; padding: 24px; } }`}</style>
       <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
         <div>
-          <Logo />
+          <Logo className="h-9 w-auto" />
           <p className="mt-2 text-xs text-stone-500">MaxPro Technology W.L.L. · Doha, Qatar · CR 000000</p>
         </div>
         <div className="text-end">

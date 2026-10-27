@@ -40,7 +40,7 @@ export function Footer() {
     <footer className="mt-16 border-t border-stone-200 bg-white">
       <div className="mx-auto grid grid-cols-1 max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-4">
         <div>
-          <Logo />
+          <Logo className="h-10 w-auto" />
           <p className="mt-3 text-sm text-stone-500">
             {t("Qatar's WhatsApp-first property platform.", "منصة العقارات في قطر التي تبدأ من واتساب.")}
           </p>

@@ -284,7 +284,7 @@ function Detail({ l }: { l: Listing }) {
           {/* Title block */}
           <section>
             <div className="flex flex-wrap items-center gap-2">
-              {l.promotion === "premium" && <Badge tone="gold">{t("Premium", "بريميوم")}</Badge>}
+              {l.promotion === "premium" && <Badge tone="premium">{t("Premium", "بريميوم")}</Badge>}
               {l.promotion === "featured" && <Badge tone="brand">{t("Featured", "مميز")}</Badge>}
               <Badge>{l.purpose === "rent" ? t("For rent", "للإيجار") : t("For sale", "للبيع")}</Badge>
               {adv.verified && (

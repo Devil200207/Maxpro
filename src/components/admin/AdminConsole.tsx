@@ -52,9 +52,9 @@ export function AdminConsole() {
 
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-4 sm:px-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-stone-900 px-4 py-3 text-white">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-navy-900 px-4 py-3 text-white">
         <div className="flex items-center gap-3">
-          <ShieldCheck className="h-5 w-5 text-gold-400" />
+          <ShieldCheck className="h-5 w-5 text-accent-400" />
           <div>
             <div className="text-sm font-bold">{t("MaxPro back office", "لوحة إدارة ماكس برو")}</div>
             <div className="text-[11px] text-stone-400">{t("Administrator · full configuration access", "مدير النظام · صلاحيات كاملة")}</div>

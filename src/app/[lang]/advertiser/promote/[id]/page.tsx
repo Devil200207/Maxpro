@@ -169,7 +169,7 @@ function Promote({
     const seq: [number, Omit<ToolCall, "id" | "at">][] = [
       [400, { name: "listings.read", args: `{ id: "${l.id}" }`, result: `ok · ${l.media.length} media, ${l.purpose}, ${l.beds}BR, QAR ${l.price}`, scope: "read" }],
       [1100, { name: "meta.estimate_reach", args: `{ geo: ["Doha","Lusail","Al Rayyan"], age: [18,65], special_ad_category: "HOUSING" }`, result: "est. 180,000–240,000 accounts", scope: "read" }],
-      [1800, { name: "creative.render_template", args: `{ template: "maxpro-maroon-v2", variants: ["feed_1x1","story_9x16"] }`, result: "2 creatives rendered (AR + EN)", scope: "read" }],
+      [1800, { name: "creative.render_template", args: `{ template: "maxpro-blue-v1", variants: ["feed_1x1","story_9x16"] }`, result: "2 creatives rendered (AR + EN)", scope: "read" }],
       [2400, { name: "meta.policy_check", args: `{ special_ad_category: "HOUSING", targeting: {...} }`, result: "passed · no prohibited targeting", scope: "check" }],
     ];
     const timers = seq.map(([ms, c]) => setTimeout(() => pushLog(c), ms));
@@ -360,7 +360,7 @@ function Promote({
                         <div className="text-xs opacity-80">{preview === "ar" ? z.name.ar : z.name.en}</div>
                         <div className="text-lg font-bold">{priceText}</div>
                       </div>
-                      <span className="rounded bg-gold-400 px-1.5 py-0.5 text-[10px] font-extrabold text-brand-900">MaxPro</span>
+                      <span className="rounded bg-accent-400 px-1.5 py-0.5 text-[10px] font-extrabold text-brand-900">MaxPro</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between bg-stone-50 p-3">
