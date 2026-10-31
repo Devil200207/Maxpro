@@ -29,10 +29,10 @@ export function Footer() {
     {
       h: t("AqarPro", "عقار برو"),
       links: [
-        [t("Demo guide", "دليل العرض"), "/demo"],
-        [t("Roadmap by stage", "خارطة الطريق"), "/roadmap"],
-        [t("Prototype audit", "تدقيق النموذج"), "/audit"],
-        [t("Contact", "اتصل بنا"), "/demo"],
+        [t("About", "من نحن"), "/"],
+        [t("Terms", "الشروط"), "/"],
+        [t("Privacy", "الخصوصية"), "/"],
+        [t("Contact", "اتصل بنا"), "/"],
       ],
     },
   ];

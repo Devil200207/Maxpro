@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Lock } from "lucide-react";
 import { useStore } from "./store";
 import { useLang } from "./useLang";
@@ -79,10 +78,10 @@ export function StageGate({
   );
 }
 
-/** Header control: S1 only ↔ S1 + S2, plus a link to the roadmap. */
+/** Header control: S1 only ↔ S1 + S2. */
 export function StageSwitch() {
   const { view, setView } = useStage();
-  const { t, href } = useLang();
+  const { t } = useLang();
   return (
     <div className="hidden items-center gap-1 rounded-lg border border-stone-200 bg-stone-50 p-0.5 text-xs font-semibold md:flex" title={t("Choose which delivery stage to demo", "اختر المرحلة المعروضة")}>
       <button onClick={() => setView("s1")} className={cn("rounded-md px-2 py-1", view === "s1" ? "bg-white text-emerald-700 shadow-sm" : "text-stone-500 hover:text-stone-800")}>
@@ -91,9 +90,6 @@ export function StageSwitch() {
       <button onClick={() => setView("all")} className={cn("rounded-md px-2 py-1", view === "all" ? "bg-white text-violet-700 shadow-sm" : "text-stone-500 hover:text-stone-800")}>
         S1 + S2
       </button>
-      <Link href={href("/roadmap")} className="rounded-md px-2 py-1 text-stone-500 hover:text-brand-600">
-        {t("Roadmap", "خارطة الطريق")}
-      </Link>
     </div>
   );
 }

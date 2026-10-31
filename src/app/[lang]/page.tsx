@@ -362,7 +362,7 @@ export default function Home() {
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: Building, title: t("Property", "العقارات"), desc: t("Rent and buy across Qatar", "إيجار وشراء في جميع أنحاء قطر"), to: "/search" },
-            { icon: Wrench, title: t("Services directory", "دليل الخدمات"), desc: t("Movers, cleaning, maintenance", "نقل وتنظيف وصيانة"), to: "/demo" },
+            { icon: Wrench, title: t("Services directory", "دليل الخدمات"), desc: t("Movers, cleaning, maintenance", "نقل وتنظيف وصيانة"), to: "/search" },
             { icon: Scale, title: t("Legal", "الخدمات القانونية"), desc: t("Tenancy contracts and advice", "عقود الإيجار والاستشارات") },
             { icon: Car, title: t("Auto repair", "صيانة السيارات"), desc: t("Trusted garages near you", "ورش موثوقة بالقرب منك") },
           ].map((v) => {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ClipboardCheck, Heart, Inbox, LayoutDashboard, Languages, Map, Menu, MessageCircle, Network, PlusCircle, Presentation, ShieldCheck, Sparkles, UserPlus, Users, X } from "lucide-react";
+import { ChevronDown, Heart, Inbox, LayoutDashboard, Languages, Menu, MessageCircle, Network, PlusCircle, Presentation, ShieldCheck, Sparkles, UserPlus, Users, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { btn, cn } from "./ui";
 import { useLang } from "@/lib/useLang";
@@ -48,9 +48,6 @@ export function Header() {
 
   const { visible } = useStage();
   const portalLinks: { icon: typeof Inbox; label: string; to: string; stage?: Stage; group: string }[] = [
-    { icon: Presentation, label: t("Demo guide (UAT scenarios)", "دليل العرض (سيناريوهات القبول)"), to: "/demo", group: "demo" },
-    { icon: Map, label: t("Roadmap by stage", "خارطة الطريق حسب المرحلة"), to: "/roadmap", group: "demo" },
-    { icon: ClipboardCheck, label: t("Prototype audit (S0)", "تدقيق النموذج (S0)"), to: "/audit", stage: "S0", group: "demo" },
     { icon: UserPlus, label: t("Register & verify", "التسجيل والتوثيق"), to: "/register", stage: "S1", group: "agency" },
     { icon: LayoutDashboard, label: t("Agency dashboard", "لوحة الوكالة"), to: "/advertiser", stage: "S1", group: "agency" },
     { icon: Sparkles, label: t("AI Listing Studio", "استوديو الإعلانات الذكي"), to: "/advertiser/studio", stage: "S1", group: "agency" },
