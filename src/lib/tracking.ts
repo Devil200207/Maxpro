@@ -17,5 +17,5 @@ export interface TrackedEvent {
 export function track(name: PixelEvent, data?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
   const ev: TrackedEvent = { name, data, eventId: `evt_${Math.random().toString(36).slice(2, 10)}`, at: Date.now() };
-  window.dispatchEvent(new CustomEvent("maxpro:track", { detail: ev }));
+  window.dispatchEvent(new CustomEvent("aqarpro:track", { detail: ev }));
 }

@@ -27,11 +27,11 @@ export function Footer() {
       ],
     },
     {
-      h: t("MaxPro", "ماكس برو"),
+      h: t("AqarPro", "عقار برو"),
       links: [
-        [t("About", "من نحن"), "/demo"],
-        [t("Terms", "الشروط"), "/demo"],
-        [t("Privacy", "الخصوصية"), "/demo"],
+        [t("Demo guide", "دليل العرض"), "/demo"],
+        [t("Roadmap by stage", "خارطة الطريق"), "/roadmap"],
+        [t("Prototype audit", "تدقيق النموذج"), "/audit"],
         [t("Contact", "اتصل بنا"), "/demo"],
       ],
     },
@@ -42,7 +42,7 @@ export function Footer() {
         <div>
           <Logo className="h-10 w-auto" />
           <p className="mt-3 text-sm text-stone-500">
-            {t("Qatar's WhatsApp-first property platform.", "منصة العقارات في قطر التي تبدأ من واتساب.")}
+            {t("One bilingual workspace to create, market, distribute and enquire about property in Qatar.", "مساحة عمل ثنائية اللغة لإنشاء العقارات وتسويقها ونشرها والاستفسار عنها في قطر.")}
           </p>
         </div>
         {cols.map((c) => (
@@ -62,7 +62,7 @@ export function Footer() {
       </div>
       <div className="border-t border-stone-100">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-stone-400 sm:px-6">
-          <span>{t("Interactive prototype — demo data only", "نموذج تفاعلي — بيانات تجريبية فقط")} · © 2026 MaxPro Technology</span>
+          <span>{t("Interactive prototype — demo data only", "نموذج تفاعلي — بيانات تجريبية فقط")} · © 2026 AqarPro</span>
           <button onClick={reset} className="underline hover:text-stone-600">
             {t("Reset demo data", "إعادة ضبط بيانات العرض")}
           </button>

@@ -14,7 +14,7 @@ let n = 0;
 
 /** Fire a toast from anywhere: toast("Saved"). */
 export function toast(text: string) {
-  window.dispatchEvent(new CustomEvent("maxpro:toast", { detail: text }));
+  window.dispatchEvent(new CustomEvent("aqarpro:toast", { detail: text }));
 }
 
 export function Toaster() {
@@ -33,11 +33,11 @@ export function Toaster() {
       const ev = (e as CustomEvent<TrackedEvent>).detail;
       push({ text: `Pixel + CAPI · ${ev.name} · ${ev.eventId}`, kind: "pixel" }, 2500);
     };
-    window.addEventListener("maxpro:toast", onToast);
-    window.addEventListener("maxpro:track", onTrack);
+    window.addEventListener("aqarpro:toast", onToast);
+    window.addEventListener("aqarpro:track", onTrack);
     return () => {
-      window.removeEventListener("maxpro:toast", onToast);
-      window.removeEventListener("maxpro:track", onTrack);
+      window.removeEventListener("aqarpro:toast", onToast);
+      window.removeEventListener("aqarpro:track", onTrack);
     };
   }, [pixelOn]);
 

@@ -1,13 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { StageBadge, type Stage } from "@/lib/stage";
 
-export function SectionHead({ title, desc, req, actions }: { title: string; desc?: string; req?: string[]; actions?: ReactNode }) {
+export function SectionHead({ title, desc, req, actions, stage }: { title: string; desc?: string; req?: string[]; actions?: ReactNode; stage?: Stage }) {
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-xl font-bold tracking-tight text-stone-900">{title}</h2>
+          {stage && <StageBadge s={stage} />}
           {req?.map((r) => (
             <span key={r} className="rounded border border-dashed border-stone-300 px-1.5 py-px font-mono text-[10px] text-stone-500">
               {r}

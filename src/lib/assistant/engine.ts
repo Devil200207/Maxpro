@@ -59,7 +59,7 @@ export function parseCriteria(raw: string): SearchCriteria & { moveIn?: boolean 
   if (bedArWord) c.min_beds = arNumWords[bedArWord[1]];
 
   // Budget: numbers with optional k / thousand / million suffixes, ignoring bed counts and listing ids.
-  const cleaned = s.replace(/MP-\d{5}/gi, " ").replace(/(\d+)\s*-?\s*(?:bed(?:room)?s?|br|bhk|غرف)/gi, " ");
+  const cleaned = s.replace(/AQ-\d{5}/gi, " ").replace(/(\d+)\s*-?\s*(?:bed(?:room)?s?|br|bhk|غرف)/gi, " ");
   const re = /(\d+(?:[.,]\d+)*)\s*(k|thousand|الف|ألف|آلاف|الاف|m\b|mn|million|مليون|ملايين)?/gi;
   let best = 0;
   for (const m of cleaned.matchAll(re)) {
@@ -128,7 +128,7 @@ export function runRules(req: AssistantRequest): AssistantResult {
     runTool("handover_to_human", { reason: "User asked to speak to a person" }, ctx);
     return {
       ...base,
-      reply: T(lang, "Of course — I'm connecting you with a MaxPro agent now. They'll see this whole conversation, so you won't need to repeat yourself.", "بالتأكيد — سأحولك الآن إلى أحد موظفي ماكس برو. سيطّلع على المحادثة كاملة فلن تحتاج إلى التكرار."),
+      reply: T(lang, "Of course — I'm connecting you with a AqarPro agent now. They'll see this whole conversation, so you won't need to repeat yourself.", "بالتأكيد — سأحولك الآن إلى أحد موظفي عقار برو. سيطّلع على المحادثة كاملة فلن تحتاج إلى التكرار."),
       listings: [],
       handover: ctx.handover,
     };
@@ -141,16 +141,16 @@ export function runRules(req: AssistantRequest): AssistantResult {
       ...base,
       reply: T(
         lang,
-        "I can't give legal, financing or visa advice — please check with a licensed professional. I've asked a MaxPro agent to join and point you to the right people.",
-        "لا أستطيع تقديم استشارات قانونية أو تمويلية أو تتعلق بالتأشيرات — يُرجى مراجعة مختص مرخّص. طلبت من أحد موظفي ماكس برو الانضمام لمساعدتك.",
+        "I can't give legal, financing or visa advice — please check with a licensed professional. I've asked a AqarPro agent to join and point you to the right people.",
+        "لا أستطيع تقديم استشارات قانونية أو تمويلية أو تتعلق بالتأشيرات — يُرجى مراجعة مختص مرخّص. طلبت من أحد موظفي عقار برو الانضمام لمساعدتك.",
       ),
       listings: [],
       handover: ctx.handover,
     };
   }
 
-  // 3. A specific listing id (e.g. "Hi, I'm interested in MP-10231").
-  const idMatch = last.toUpperCase().match(/MP-\d{5}/);
+  // 3. A specific listing id (e.g. "Hi, I'm interested in AQ-10231").
+  const idMatch = last.toUpperCase().match(/AQ-\d{5}/);
   if (idMatch) {
     const facts = runTool("get_listing", { id: idMatch[0] }, ctx) as ReturnType<typeof getListingTool>;
     if ("error" in facts) {
@@ -233,8 +233,8 @@ export function runRules(req: AssistantRequest): AssistantResult {
     ...base,
     reply: T(
       lang,
-      `${greet ? "Hello! " : ""}I'm the MaxPro assistant. Tell me what you're looking for — for example "2-bed apartment in The Pearl under 13k" — or ask me about plans and listing on MaxPro.`,
-      `${greet ? "أهلاً بك! " : ""}أنا مساعد ماكس برو. أخبرني بما تبحث عنه — مثلاً "شقة غرفتين في اللؤلؤة بأقل من 13 ألف" — أو اسألني عن الباقات والنشر على ماكس برو.`,
+      `${greet ? "Hello! " : ""}I'm the AqarPro assistant. Tell me what you're looking for — for example "2-bed apartment in The Pearl under 13k" — or ask me about plans and listing on AqarPro.`,
+      `${greet ? "أهلاً بك! " : ""}أنا مساعد عقار برو. أخبرني بما تبحث عنه — مثلاً "شقة غرفتين في اللؤلؤة بأقل من 13 ألف" — أو اسألني عن الباقات والنشر على عقار برو.`,
     ),
     listings: [],
     buttons: req.channel === "whatsapp" ? [T(lang, "Rent", "إيجار"), T(lang, "Buy", "شراء"), T(lang, "Talk to agent", "تحدث مع موظف")] : undefined,

@@ -8,10 +8,12 @@ import { compactQar, priceLabel } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { useLang } from "@/lib/useLang";
 import { Badge, cn } from "./ui";
+import { useStage } from "@/lib/stage";
 
 export function ListingCard({ l, compact = false, onHover }: { l: Listing; compact?: boolean; onHover?: (id: string | null) => void }) {
   const { lang, t, p, href } = useLang();
   const { state, toggleFavourite } = useStore();
+  const { visible } = useStage();
   const fav = state.favourites.includes(l.id);
   const adv = advertiserById(l.advertiserId);
   const cover = l.media.find((m) => m.cat === "exterior") ?? l.media[0];
@@ -42,6 +44,7 @@ export function ListingCard({ l, compact = false, onHover }: { l: Listing; compa
         </span>
       </Link>
 
+      {visible("S2") && (
       <button
         onClick={() => toggleFavourite(l.id)}
         aria-label={t("Save", "حفظ")}
@@ -49,6 +52,7 @@ export function ListingCard({ l, compact = false, onHover }: { l: Listing; compa
       >
         <Heart className={cn("h-4 w-4", fav ? "fill-brand-600 text-brand-600" : "text-stone-700")} />
       </button>
+      )}
 
       <div className="flex flex-1 flex-col p-4">
         <div className="text-lg font-bold text-stone-900">

@@ -3,7 +3,8 @@
 import { Printer } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Badge, btn } from "@/components/ui";
-import { advertiserById, DEMO_ADVERTISER_ID } from "@/lib/data";
+import { advertiserById } from "@/lib/data";
+import { invoiceOwner } from "@/components/account/useAccount";
 import { gregorian, hijri, qar } from "@/lib/format";
 import type { Invoice } from "@/lib/store";
 
@@ -18,7 +19,7 @@ const methodName = {
  * document, tax line shown even when not applicable.
  */
 export function InvoiceView({ inv }: { inv: Invoice }) {
-  const adv = advertiserById(DEMO_ADVERTISER_ID);
+  const adv = advertiserById(invoiceOwner(inv));
   const subtotal = inv.lines.reduce((s, l) => s + l.amount, 0);
 
   return (
@@ -27,7 +28,7 @@ export function InvoiceView({ inv }: { inv: Invoice }) {
       <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
         <div>
           <Logo className="h-9 w-auto" />
-          <p className="mt-2 text-xs text-stone-500">MaxPro Technology W.L.L. · Doha, Qatar · CR 000000</p>
+          <p className="mt-2 text-xs text-stone-500">AqarPro W.L.L. · Doha, Qatar · CR 000000</p>
         </div>
         <div className="text-end">
           <div className="text-lg font-bold">
@@ -102,7 +103,7 @@ export function InvoiceView({ inv }: { inv: Invoice }) {
       )}
 
       <p className="mt-6 text-[11px] text-stone-400">
-        Computer-generated invoice. Card data is processed on the payment gateway&apos;s PCI DSS hosted page and is never stored by MaxPro.
+        Computer-generated invoice. Card data is processed on the payment gateway&apos;s PCI DSS hosted page and is never stored by AqarPro.
       </p>
 
       <div className="mt-5 flex gap-2 print:hidden">

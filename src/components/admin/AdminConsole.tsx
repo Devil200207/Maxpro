@@ -4,6 +4,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Bell,
   BrainCircuit,
+  FileCheck2,
+  Network,
   Flag,
   LayoutDashboard,
   ListChecks,
@@ -18,7 +20,8 @@ import { useStore } from "@/lib/store";
 import { useLang } from "@/lib/useLang";
 import { Badge, cn } from "@/components/ui";
 import { Overview } from "./Overview";
-import { ModerationQueue, Reports, Verification } from "./Moderation";
+import { ComplianceAdmin, ModerationQueue, Reports, Verification } from "./Moderation";
+import { HubDashboard } from "@/components/hub/HubDashboard";
 import { AdInventory, FeatureFlags, PlansEditor } from "./Config";
 import { AiConsole, AuditTrail, Notifications } from "./Ops";
 
@@ -27,6 +30,8 @@ const TABS = [
   { id: "moderation", icon: ListChecks, en: "Moderation queue", ar: "قائمة المراجعة" },
   { id: "reports", icon: Flag, en: "Reports", ar: "البلاغات" },
   { id: "verification", icon: UserCheck, en: "Verification", ar: "التوثيق" },
+  { id: "hub", icon: Network, en: "Portal Hub", ar: "مركز البوابات" },
+  { id: "compliance", icon: FileCheck2, en: "Compliance", ar: "الامتثال" },
   { id: "plans", icon: SlidersHorizontal, en: "Plans & pricing", ar: "الباقات والأسعار" },
   { id: "ads", icon: Megaphone, en: "Ad inventory", ar: "المساحات الإعلانية" },
   { id: "notifications", icon: Bell, en: "Notifications", ar: "الإشعارات" },
@@ -48,7 +53,14 @@ export function AdminConsole() {
   const go = (id: AdminTab) => router.replace(`${pathname}?tab=${id}`, { scroll: false });
 
   const pending = state.listings.filter((l) => l.status === "pending").length;
-  const badges: Partial<Record<AdminTab, number>> = { moderation: pending, verification: 2, reports: 2 };
+  const hubIssues = state.portalListings.filter((x) => x.status === "needs_fix" || x.status === "failed" || x.status === "timeout").length;
+  const badges: Partial<Record<AdminTab, number>> = {
+    moderation: pending,
+    verification: state.verifications.filter((v) => v.status === "pending").length,
+    reports: state.reports.filter((r) => r.status === "open" || (r.status === "resubmitted" && !r.resolvedAt)).length,
+    hub: hubIssues,
+    compliance: state.compliance.filter((c) => c.status !== "valid").length,
+  };
 
   return (
     <div className="mx-auto max-w-[1500px] px-3 py-4 sm:px-4">
@@ -56,7 +68,7 @@ export function AdminConsole() {
         <div className="flex items-center gap-3">
           <ShieldCheck className="h-5 w-5 text-accent-400" />
           <div>
-            <div className="text-sm font-bold">{t("MaxPro back office", "لوحة إدارة ماكس برو")}</div>
+            <div className="text-sm font-bold">{t("AqarPro back office", "لوحة إدارة عقار برو")}</div>
             <div className="text-[11px] text-stone-400">{t("Administrator · full configuration access", "مدير النظام · صلاحيات كاملة")}</div>
           </div>
         </div>
@@ -64,7 +76,7 @@ export function AdminConsole() {
           <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-semibold text-emerald-300">
             ✓ {t("Signed in with 2FA", "دخول بالتحقق الثنائي")} <span className="ms-1 font-mono text-[10px] opacity-70">FR-ACC-05</span>
           </span>
-          <span className="hidden rounded-full bg-white/10 px-2.5 py-1 sm:inline">admin@maxpro.qa</span>
+          <span className="hidden rounded-full bg-white/10 px-2.5 py-1 sm:inline">admin@aqarpro.qa</span>
         </div>
       </div>
 
@@ -93,6 +105,8 @@ export function AdminConsole() {
           {tab === "moderation" && <ModerationQueue />}
           {tab === "reports" && <Reports />}
           {tab === "verification" && <Verification />}
+          {tab === "hub" && <HubDashboard scope="admin" />}
+          {tab === "compliance" && <ComplianceAdmin />}
           {tab === "plans" && <PlansEditor />}
           {tab === "ads" && <AdInventory />}
           {tab === "notifications" && <Notifications />}

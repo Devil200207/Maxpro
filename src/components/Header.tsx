@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Heart, Inbox, LayoutDashboard, Languages, Menu, MessageCircle, PlusCircle, Presentation, ShieldCheck, X } from "lucide-react";
+import { ChevronDown, ClipboardCheck, Heart, Inbox, LayoutDashboard, Languages, Map, Menu, MessageCircle, Network, PlusCircle, Presentation, ShieldCheck, Sparkles, UserPlus, Users, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { btn, cn } from "./ui";
 import { useLang } from "@/lib/useLang";
 import { useStore } from "@/lib/store";
+import { StageBadge, StageSwitch, useStage, type Stage } from "@/lib/stage";
 
 export function Header() {
   const { lang, t, href } = useLang();
@@ -45,19 +46,26 @@ export function Header() {
     { label: t("Pricing", "الأسعار"), to: "/pricing" },
   ];
 
-  const portalLinks = [
-    { icon: LayoutDashboard, label: t("Advertiser dashboard", "لوحة المعلن"), to: "/advertiser" },
-    { icon: PlusCircle, label: t("Post a listing", "أضف إعلان"), to: "/advertiser/new" },
-    { icon: ShieldCheck, label: t("Admin & moderation", "الإدارة والمراجعة"), to: "/admin" },
-    { icon: Inbox, label: t("Support inbox", "صندوق الدعم"), to: "/inbox" },
-    { icon: MessageCircle, label: t("WhatsApp simulator", "محاكي واتساب"), to: "/whatsapp" },
-    { icon: Presentation, label: t("Demo guide", "دليل العرض"), to: "/demo" },
+  const { visible } = useStage();
+  const portalLinks: { icon: typeof Inbox; label: string; to: string; stage?: Stage; group: string }[] = [
+    { icon: Presentation, label: t("Demo guide (UAT scenarios)", "دليل العرض (سيناريوهات القبول)"), to: "/demo", group: "demo" },
+    { icon: Map, label: t("Roadmap by stage", "خارطة الطريق حسب المرحلة"), to: "/roadmap", group: "demo" },
+    { icon: ClipboardCheck, label: t("Prototype audit (S0)", "تدقيق النموذج (S0)"), to: "/audit", stage: "S0", group: "demo" },
+    { icon: UserPlus, label: t("Register & verify", "التسجيل والتوثيق"), to: "/register", stage: "S1", group: "agency" },
+    { icon: LayoutDashboard, label: t("Agency dashboard", "لوحة الوكالة"), to: "/advertiser", stage: "S1", group: "agency" },
+    { icon: Sparkles, label: t("AI Listing Studio", "استوديو الإعلانات الذكي"), to: "/advertiser/studio", stage: "S1", group: "agency" },
+    { icon: Network, label: t("Portal Integration Hub", "مركز ربط البوابات"), to: "/hub", stage: "S1", group: "agency" },
+    { icon: Users, label: t("Lead manager", "إدارة العملاء"), to: "/advertiser/leads", stage: "S1", group: "agency" },
+    { icon: PlusCircle, label: t("Post a listing (classic form)", "أضف إعلان (النموذج التقليدي)"), to: "/advertiser/new", stage: "S1", group: "agency" },
+    { icon: ShieldCheck, label: t("Admin & moderation", "الإدارة والمراجعة"), to: "/admin", stage: "S1", group: "ops" },
+    { icon: Inbox, label: t("Support inbox", "صندوق الدعم"), to: "/inbox", stage: "S1", group: "ops" },
+    { icon: MessageCircle, label: t("WhatsApp simulator", "محاكي واتساب"), to: "/whatsapp", stage: "S2", group: "ops" },
   ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:gap-4 sm:px-6">
-        <Link href={href("/")} aria-label="MaxPro home" className="shrink-0">
+        <Link href={href("/")} aria-label="AqarPro home" className="shrink-0">
           <Logo className="h-9 w-auto sm:h-11" />
         </Link>
 
@@ -70,6 +78,7 @@ export function Header() {
         </nav>
 
         <div className="ms-auto flex items-center gap-1">
+          <StageSwitch />
           <div className="relative hidden md:block" ref={ref}>
             <button onClick={() => setPortals((v) => !v)} className={cn(btn.ghost, "border border-dashed border-stone-300")}>
               <Presentation className="h-4 w-4" />
@@ -77,17 +86,25 @@ export function Header() {
               <ChevronDown className="h-4 w-4" />
             </button>
             {portals && (
-              <div className="absolute end-0 mt-2 w-64 rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg">
-                {portalLinks.map((p) => (
-                  <Link key={p.to} href={href(p.to)} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-stone-700 hover:bg-stone-100">
-                    <p.icon className="h-4 w-4 text-brand-600" />
-                    {p.label}
-                  </Link>
+              <div className="absolute end-0 mt-2 w-80 rounded-xl border border-stone-200 bg-white p-1.5 shadow-lg">
+                {portalLinks.map((p, i) => (
+                  <div key={p.to}>
+                    {i > 0 && portalLinks[i - 1].group !== p.group && <div className="my-1 border-t border-stone-100" />}
+                    <Link
+                      href={href(p.to)}
+                      className={cn("flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-stone-700 hover:bg-stone-100", p.stage && !visible(p.stage) && "opacity-40")}
+                    >
+                      <p.icon className="h-4 w-4 shrink-0 text-brand-600" />
+                      <span className="flex-1">{p.label}</span>
+                      {p.stage && <StageBadge s={p.stage} />}
+                    </Link>
+                  </div>
                 ))}
               </div>
             )}
           </div>
 
+          {visible("S2") && (
           <Link href={href("/search?favourites=1")} className={cn(btn.ghost, "relative")} aria-label={t("Favourites", "المفضلة")}>
             <Heart className="h-5 w-5" />
             {state.favourites.length > 0 && (
@@ -96,6 +113,7 @@ export function Header() {
               </span>
             )}
           </Link>
+          )}
 
           <button onClick={switchLang} className={btn.ghost} aria-label="Switch language">
             <Languages className="h-4 w-4" />

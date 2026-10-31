@@ -22,7 +22,10 @@ import { Modal } from "@/components/advertiser/Modal";
 import { InvoiceView } from "@/components/advertiser/InvoiceView";
 import { nextInvoiceId } from "@/components/advertiser/billing";
 import { toast } from "@/components/Toaster";
-import { DEMO_ADVERTISER_ID, DEMO_NOW, advertiserById, planById, planFeatureNames, plans, type Plan } from "@/lib/data";
+import { DEMO_NOW, planById, planFeatureNames, plans, type Plan } from "@/lib/data";
+import { StageBadge, StageGate } from "@/lib/stage";
+import { type OwnedInvoice, useAccount } from "@/components/account/useAccount";
+import { AccountBar } from "@/components/account/AccountBar";
 import { gregorian, num, qar } from "@/lib/format";
 import { uid, useStore, type Invoice } from "@/lib/store";
 import { track } from "@/lib/tracking";
@@ -40,7 +43,8 @@ export default function PricingPage() {
   const { state, update } = useStore();
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const [checkout, setCheckout] = useState<Plan | null>(null);
-  const sub = state.subscription;
+  const acct = useAccount();
+  const sub = useSub();
 
   const addOns = [
     { icon: Star, name: t("Featured slot", "خانة مميزة"), price: t("QAR 150 / listing / 14 days", "150 ر.ق / إعلان / 14 يوم"), desc: t("Pinned above organic results with a Featured badge.", "يظهر أعلى النتائج مع شارة مميز.") },
@@ -58,10 +62,12 @@ export default function PricingPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <AccountBar />
       <div className="mx-auto max-w-2xl text-center">
         <div className="flex justify-center gap-1.5">
           <ReqTag id="FR-BIL-01" />
           <ReqTag id="WP-ERX-03" />
+          <StageBadge s="S1" />
         </div>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
           {t("Plans that grow with your portfolio", "باقات تنمو مع محفظتك العقارية")}
@@ -126,6 +132,8 @@ export default function PricingPage() {
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.featuredCredits, lang)} {t("featured credits / month", "رصيد تمييز / شهر")}</li>
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.seats, lang)} {t("team seats", "مستخدم")}</li>
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.bumpsPerMonth, lang)} {t("bumps / month", "رفع / شهر")}</li>
+                <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.aiCredits, lang)} {t("AI credits / month", "رصيد ذكاء / شهر")}</li>
+                <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{pl.quotas.portals ? `${num(pl.quotas.portals, lang)} ${t("portal connections", "ربط بوابات")}` : t("No portal publishing", "بدون نشر على البوابات")}</li>
               </ul>
               <div className="mt-auto pt-6">
                 {price === -1 ? (
@@ -133,9 +141,9 @@ export default function PricingPage() {
                     <Building2 className="h-4 w-4" />
                     {t("Contact sales", "تواصل مع المبيعات")}
                   </button>
-                ) : current ? (
-                  <button disabled className={cn(btn.secondary, "w-full")}>
-                    {t("Current plan", "الباقة الحالية")}
+                ) : current || !acct.can.billing ? (
+                  <button disabled title={acct.can.billing ? undefined : t("Only the organisation owner can change the plan", "فقط مالك المؤسسة يمكنه تغيير الباقة")} className={cn(btn.secondary, "w-full")}>
+                    {current ? t("Current plan", "الباقة الحالية") : t("Owner only", "للمالك فقط")}
                   </button>
                 ) : (
                   <button onClick={() => setCheckout(pl)} className={cn(pl.highlight ? btn.primary : btn.secondary, "w-full")}>
@@ -178,12 +186,14 @@ export default function PricingPage() {
         </p>
       </Card>
 
-      {/* Add-ons */}
+      {/* Add-ons (Stage 2) */}
       <section className="mt-12">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-bold text-stone-900">{t("Pay-per-use add-ons", "إضافات حسب الاستخدام")}</h2>
           <ReqTag id="FR-BIL-05" />
+          <StageBadge s="S2" />
         </div>
+        <StageGate stage="S2" className="mt-4" label={t("Pay-per-use add-ons are delivered in Stage 2", "الإضافات حسب الاستخدام تُسلَّم في المرحلة الثانية")}>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {addOns.map((a) => (
             <Card key={a.name} className="p-5">
@@ -194,6 +204,7 @@ export default function PricingPage() {
             </Card>
           ))}
         </div>
+        </StageGate>
       </section>
 
       {/* FAQ */}
@@ -228,6 +239,21 @@ export default function PricingPage() {
   );
 }
 
+/** The signed-in account's subscription (the demo agency's lives in state.subscription). */
+function useSub() {
+  const { state } = useStore();
+  const { adv, isDemoAgency } = useAccount();
+  if (isDemoAgency) return state.subscription;
+  return { ...state.subscription, planId: adv.planId, cycle: "monthly" as Cycle, renewsAt: new Date(DEMO_NOW + 30 * DAY).toISOString(), autoRenew: true, featuredUsed: 0, bumpsUsed: 0 };
+}
+
+interface CallbackEvent {
+  id: string;
+  at: string;
+  kind: "received" | "verified" | "applied" | "duplicate";
+  text: string;
+}
+
 function Checkout({
   plan,
   cycle,
@@ -245,10 +271,15 @@ function Checkout({
   const [step, setStep] = useState<Step>("summary");
   const [method, setMethod] = useState<Method>("card");
   const [otp, setOtp] = useState("");
-  const [card, setCard] = useState({ number: "4111 1111 1111 1111", name: "Pearl Gate Realty", exp: "12/28", cvc: "123" });
+  const acct = useAccount();
+  const { adv, isDemoAgency } = acct;
+  const [card, setCard] = useState({ number: "4111 1111 1111 1111", name: adv.name.en, exp: "12/28", cvc: "123" });
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [coupon, setCoupon] = useState("");
+  const [events, setEvents] = useState<CallbackEvent[]>([]);
+  const [eventId, setEventId] = useState("");
 
-  const sub = state.subscription;
+  const sub = useSub();
   const current = planById(sub.planId);
   const price = priceFor(plan, cycle);
   const currentPrice = priceFor(current, sub.cycle);
@@ -271,7 +302,8 @@ function Checkout({
         label: { en: `Prorated credit — ${daysLeft} unused days on ${current.name.en}`, ar: `رصيد تناسبي — ${daysLeft} يوماً غير مستخدمة من ${current.name.ar}` },
         amount: -credit,
       });
-    const inv: Invoice = {
+    const inv: OwnedInvoice = {
+      advertiserId: adv.id,
       id,
       at: now.toISOString(),
       description: { en: `${planLabel.en} — ${gregorian(now, "en")}`, ar: `${planLabel.ar} — ${gregorian(now, "ar")}` },
@@ -280,12 +312,13 @@ function Checkout({
       method: method === "bank" ? "bank" : method === "debit" ? "debit" : "card",
       lines,
     };
-    const adv = advertiserById(DEMO_ADVERTISER_ID);
+    const evt = uid("evt");
     update((s) => ({
       ...s,
       invoices: [inv, ...s.invoices],
+      advertisers: status === "paid" && !isDemoAgency ? s.advertisers.map((a) => (a.id === adv.id ? { ...a, planId: plan.id } : a)) : s.advertisers,
       subscription:
-        status === "paid"
+        status === "paid" && isDemoAgency
           ? {
               ...s.subscription,
               planId: plan.id,
@@ -296,7 +329,7 @@ function Checkout({
             }
           : s.subscription,
       notifications: [
-        { id: uid("N"), at: now.toISOString(), channel: "email", to: "billing@pearlgate.qa", template: status === "paid" ? "payment_receipt" : "bank_transfer_instructions", status: "sent" },
+        { id: uid("N"), at: now.toISOString(), channel: "email", to: `billing@${adv.id.replace("adv-", "")}.qa`, template: status === "paid" ? "payment_receipt" : "bank_transfer_instructions", status: "sent" },
         { id: uid("N"), at: now.toISOString(), channel: "whatsapp", to: adv.phone, template: status === "paid" ? "subscription_activated" : "invoice_pending", status: "delivered" },
         ...s.notifications,
       ],
@@ -304,13 +337,13 @@ function Checkout({
         {
           id: uid("A"),
           at: now.toISOString(),
-          actor: adv.name.en,
+          actor: acct.actorName,
           role: "advertiser",
           action: status === "paid" ? "subscription.changed" : "invoice.pending_bank_transfer",
           target: id,
           detail: `${sub.planId}/${sub.cycle} → ${plan.id}/${cycle}; total QAR ${total}`,
         },
-        { id: uid("A"), at: now.toISOString(), actor: "Payment gateway", role: "system", action: "payment.callback", target: id, detail: status === "paid" ? "verified signature; processed once (idempotency key)" : "awaiting manual approval" },
+        { id: uid("A"), at: now.toISOString(), actor: "Payment gateway", role: "system", action: "payment.callback", target: id, detail: status === "paid" ? `${evt}; HMAC signature verified; applied once (idempotency key)` : "awaiting manual approval" },
         ...s.audit,
       ],
     }));
@@ -319,6 +352,16 @@ function Checkout({
       track("Purchase", { value: total, currency: "QAR", invoice: id });
     }
     setInvoice(inv);
+    setEventId(evt);
+    if (status === "paid") {
+      const t0 = now.getTime();
+      const at = (ms: number) => new Date(t0 + ms).toISOString();
+      setEvents([
+        { id: uid("E"), at: at(0), kind: "received", text: `POST /webhooks/payments · ${evt} · charge.succeeded · QAR ${total}` },
+        { id: uid("E"), at: at(40), kind: "verified", text: `HMAC-SHA256 signature valid · amount and order ${id} match` },
+        { id: uid("E"), at: at(90), kind: "applied", text: `Idempotency key ${evt} stored → subscription ${plan.id}/${cycle} activated · invoice ${id} issued (AR/EN)` },
+      ]);
+    }
     setStep("done");
     toast(status === "paid" ? t("Payment successful — plan activated", "تم الدفع — تم تفعيل الباقة") : t("Invoice issued — awaiting bank transfer", "صدرت الفاتورة — بانتظار التحويل"));
   };
@@ -371,6 +414,15 @@ function Checkout({
               <span>{qar(total, lang)}</span>
             </div>
           </div>
+          <StageGate stage="S2" mode="hide">
+            <div className="mt-3 flex items-center gap-2">
+              <input className={cn(input, "py-2 text-sm")} value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} placeholder={t("Coupon or referral code", "رمز خصم أو إحالة")} />
+              <button onClick={() => toast(t("Coupons and referral credits arrive in Stage 2 (FR-BIL-06)", "القسائم وأرصدة الإحالة في المرحلة الثانية"))} className={cn(btn.secondary, "shrink-0 py-2")}>
+                {t("Apply", "تطبيق")}
+              </button>
+              <StageBadge s="S2" />
+            </div>
+          </StageGate>
           {price === 0 && (
             <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
               {t("Downgrades take effect at your next renewal. Listings above the Starter quota will be paused, not deleted.", "التخفيض يسري عند التجديد التالي. الإعلانات التي تتجاوز حد المبتدئ ستُوقف مؤقتاً ولن تُحذف.")}
@@ -384,7 +436,7 @@ function Checkout({
               if (price === 0) {
                 update((s) => ({
                   ...s,
-                  audit: [{ id: uid("A"), at: new Date().toISOString(), actor: "Pearl Gate Realty", role: "advertiser", action: "subscription.downgrade_scheduled", target: plan.id, detail: `effective ${s.subscription.renewsAt}` }, ...s.audit],
+                  audit: [{ id: uid("A"), at: new Date().toISOString(), actor: acct.actorName, role: "advertiser", action: "subscription.downgrade_scheduled", target: plan.id, detail: `effective ${s.subscription.renewsAt}` }, ...s.audit],
                 }));
                 toast(t("Downgrade scheduled for next renewal", "تمت جدولة التخفيض للتجديد القادم"));
                 onClose();
@@ -422,7 +474,7 @@ function Checkout({
           <div className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              {t("Card data never touches MaxPro — you pay on the gateway's PCI DSS hosted page.", "بيانات البطاقة لا تمر عبر ماكس برو — الدفع يتم على صفحة البوابة المستضافة المتوافقة مع PCI DSS.")} <ReqTag id="NFR-SEC-03" />
+              {t("Card data never touches AqarPro — you pay on the gateway's PCI DSS hosted page.", "بيانات البطاقة لا تمر عبر عقار برو — الدفع يتم على صفحة البوابة المستضافة المتوافقة مع PCI DSS.")} <ReqTag id="NFR-SEC-03" />
             </span>
           </div>
           <button onClick={pay} className={cn(btn.primary, "mt-5 w-full")}>
@@ -441,7 +493,7 @@ function Checkout({
             <span className="font-semibold">Hosted payment page</span>
           </div>
           <div className="text-sm text-stone-600">
-            MaxPro Technology · <span className="font-semibold text-stone-900">{qar(total, "en")}</span>
+            AqarPro · <span className="font-semibold text-stone-900">{qar(total, "en")}</span>
           </div>
           <div className="mt-4 grid gap-3">
             <input className={input} value={card.number} onChange={(e) => setCard({ ...card, number: e.target.value })} placeholder="Card number" inputMode="numeric" />
@@ -496,7 +548,59 @@ function Checkout({
         </div>
       )}
 
-      {step === "done" && invoice && <InvoiceView inv={invoice} />}
+      {step === "done" && invoice && (
+        <div className="space-y-4">
+          {events.length > 0 && (
+            <div className="rounded-xl border border-stone-200 bg-stone-950 p-3 font-mono text-[11px] text-stone-200" dir="ltr">
+              <div className="mb-2 flex items-center justify-between font-sans text-xs">
+                <span className="font-semibold text-white">Payment callback log · exactly-once processing</span>
+                <span className="rounded border border-dashed border-stone-600 px-1.5 text-[10px] text-stone-400">WP-BIL-08</span>
+              </div>
+              <ul className="space-y-1">
+                {events.map((e) => (
+                  <li key={e.id} className="flex gap-2">
+                    <span className="text-stone-500">{e.at.slice(11, 23)}</span>
+                    <span
+                      className={cn(
+                        "w-20 shrink-0 font-bold uppercase",
+                        e.kind === "duplicate" ? "text-amber-400" : e.kind === "applied" ? "text-emerald-400" : "text-sky-400",
+                      )}
+                    >
+                      {e.kind}
+                    </span>
+                    <span className="break-all">{e.text}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => {
+                  setEvents((ev) => [
+                    ...ev,
+                    { id: uid("E"), at: new Date().toISOString(), kind: "duplicate", text: `Gateway retried ${eventId} · idempotency key already processed → ignored, logged, NOT re-applied (no second invoice, no double activation)` },
+                  ]);
+                  update((s) => ({
+                    ...s,
+                    audit: [{ id: uid("A"), at: new Date().toISOString(), actor: "Payment gateway", role: "system", action: "payment.callback_duplicate_ignored", target: invoice.id, detail: eventId }, ...s.audit],
+                  }));
+                  toast(t("Duplicate callback ignored — nothing applied twice", "تم تجاهل الإشعار المكرر — لم يُطبّق مرتين"));
+                }}
+                className="mt-3 rounded-lg bg-white/10 px-3 py-1.5 font-sans text-xs font-semibold text-white hover:bg-white/20"
+              >
+                Simulate duplicate callback from gateway
+              </button>
+            </div>
+          )}
+          <InvoiceView inv={invoice} />
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <Link href={`/${lang}/advertiser/new`} className={btn.primary}>
+              {t("Next: post a listing", "التالي: أضف إعلاناً")}
+            </Link>
+            <Link href={`/${lang}/advertiser?tab=billing`} className={btn.secondary}>
+              {t("Go to billing", "الذهاب إلى الفوترة")}
+            </Link>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

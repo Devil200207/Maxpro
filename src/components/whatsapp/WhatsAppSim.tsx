@@ -9,7 +9,9 @@ import { advertiserById, planById, roomCatName, zoneById, type Listing, type Roo
 import { priceLabel } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 import { similarListings } from "@/lib/search";
-import { uid, useStore, type ChatMsg, type Conversation, type Lead } from "@/lib/store";
+import { uid, useStore, type ChatMsg, type Conversation } from "@/lib/store";
+import { addAiUsage, createLead, type NewLeadInput } from "@/lib/leads";
+import { StageBadge, StageGate, useStage } from "@/lib/stage";
 import { track } from "@/lib/tracking";
 import { useLang } from "@/lib/useLang";
 import type { AssistantResult } from "@/lib/assistant/types";
@@ -41,6 +43,7 @@ const L = (lang: Locale, en: string, ar: string) => (lang === "ar" ? ar : en);
 
 const btnLabels = (lang: Locale) => ({
   pack: L(lang, "Property pack", "ملف العقار"),
+  more: L(lang, "More photos", "صور إضافية"),
   viewing: L(lang, "Book a viewing", "حجز معاينة"),
   similar: L(lang, "Similar properties", "عقارات مشابهة"),
   agent: L(lang, "Talk to agent", "تحدث مع موظف"),
@@ -53,6 +56,8 @@ export function WhatsAppSim() {
   const { lang: uiLang, t, href } = useLang();
   const sp = useSearchParams();
   const { state, update } = useStore();
+  const { visible } = useStage();
+  const s2 = visible("S2");
   const paramListing = sp.get("listing")?.toUpperCase() ?? undefined;
   const wantsPack = sp.get("pack") === "1";
 
@@ -77,6 +82,12 @@ export function WhatsAppSim() {
   const ctxRef = useRef<string | undefined>(paramListing);
   const langRef = useRef<Locale>(uiLang);
   const convRef = useRef<string | null>(null);
+  const stateRef = useRef(state);
+  const s2Ref = useRef(s2);
+  useEffect(() => {
+    stateRef.current = state;
+    s2Ref.current = s2;
+  }, [state, s2]);
 
   const setAll = (fn: (m: WaMsg[]) => WaMsg[]) => {
     msgsRef.current = fn(msgsRef.current);
@@ -134,11 +145,60 @@ export function WhatsAppSim() {
     addLog("consent", `${optedIn ? "OPT-IN" : "OPT-OUT"} ${CUSTOMER} · ${via} · ${new Date().toLocaleTimeString("en-GB")}`);
   }
 
+  /** C2: a button tap on a listing becomes a lead with listing ID + source, routed per plan rules. */
+  function leadInput(trigger: string, viewing = false): NewLeadInput | undefined {
+    const l = getListing(ctxRef.current);
+    if (!l) return undefined;
+    const lang = langRef.current;
+    return {
+      listingId: l.id,
+      advertiserId: l.advertiserId,
+      name: L(lang, "WhatsApp customer", "عميل واتساب"),
+      phone: CUSTOMER,
+      channel: "whatsapp",
+      message: trigger,
+      source: paramListing ? "Send to WhatsApp (listing page)" : "WhatsApp (direct)",
+      signals: { viewing, turns: msgsRef.current.filter((m) => m.from === "user").length },
+      actor: "WhatsApp bot",
+    };
+  }
+
+  function logLead(input: NewLeadInput) {
+    const preview = createLead(stateRef.current, input);
+    const adv = advertiserById(input.advertiserId);
+    addLog(
+      "routing",
+      preview.merged
+        ? `Repeat enquiry merged into ${preview.lead.id} (duplicate detection, LED-03)`
+        : `Lead ${preview.lead.id} created · ${input.listingId} · score ${preview.lead.score}${preview.lead.assignee ? ` · assigned ${preview.lead.assignee}` : ""}`,
+    );
+    addLog("routing", `Delivered to ${adv.name.en} via ${preview.channels.map((c) => (c === "inapp" ? "dashboard" : c)).join(" + ")} (${planById(adv.planId).name.en} plan rule)`);
+  }
+
+  function captureLead(trigger: string, viewing = false) {
+    const input = leadInput(trigger, viewing);
+    if (!input) return;
+    logLead(input);
+    update((s) => createLead(s, input).state);
+    track("Lead", { listing_id: input.listingId, source: "whatsapp_button" });
+  }
+
+  async function sendMorePhotos() {
+    const lang = langRef.current;
+    const l = getListing(ctxRef.current);
+    if (!l) return;
+    const ordered = PACK_ORDER.flatMap((cat) => l.media.filter((m) => m.cat === cat));
+    const extra = (ordered.length > MAX_MEDIA ? ordered.slice(MAX_MEDIA) : l.media.filter((m) => m.cat === "living" || m.cat === "bedroom")).slice(0, 3);
+    for (const m of extra) await botSay([{ kind: "media", media: { src: m.src, caption: `${roomCatName[m.cat][lang]} · ${L(lang, "extra angle", "زاوية إضافية")}` } }], 500);
+    const b = btnLabels(lang);
+    await botSay([{ kind: "text", text: L(lang, "Anything else?", "هل تريد شيئاً آخر؟"), buttons: [b.viewing, b.similar, b.agent] }]);
+  }
+
   async function sendPack(id?: string) {
     const lang = langRef.current;
     const l = getListing(id);
     if (!l) {
-      await botSay([{ kind: "text", text: L(lang, "Which property? Send me a listing ID (e.g. MP-10231) or tell me what you're looking for.", "أي عقار؟ أرسل رقم الإعلان (مثل MP-10231) أو أخبرني بما تبحث عنه.") }]);
+      await botSay([{ kind: "text", text: L(lang, "Which property? Send me a listing ID (e.g. AQ-10231) or tell me what you're looking for.", "أي عقار؟ أرسل رقم الإعلان (مثل AQ-10231) أو أخبرني بما تبحث عنه.") }]);
       return;
     }
     track("ViewContent", { listing_id: l.id, channel: "whatsapp_pack" });
@@ -147,7 +207,7 @@ export function WhatsAppSim() {
     await botSay([
       {
         kind: "text",
-        text: `🏠 ${l.title[lang]}\n💰 ${priceLabel(l.price, l.purpose, lang)}\n📐 ${l.area} ${L(lang, "sqm", "م²")} · ${beds} · ${l.baths} ${L(lang, "bath", "حمامات")}\n🔗 maxpro.qa/${lang}/listing/${l.id}`,
+        text: `🏠 ${l.title[lang]}\n💰 ${priceLabel(l.price, l.purpose, lang)}\n📐 ${l.area} ${L(lang, "sqm", "م²")} · ${beds} · ${l.baths} ${L(lang, "bath", "حمامات")}\n🔗 aqarpro.qa/${lang}/listing/${l.id}`,
       },
       { kind: "location", location: { name: l.building?.[lang] ?? z, address: `${z}, ${L(lang, "Qatar", "قطر")}`, lat: l.lat, lng: l.lng } },
     ]);
@@ -166,7 +226,7 @@ export function WhatsAppSim() {
       await botSay([{ kind: "media", media: { src: m.src, caption } }], 550);
     }
     const b = btnLabels(lang);
-    await botSay([{ kind: "text", text: L(lang, "That's the full pack. What would you like to do next?", "هذا هو الملف الكامل. ماذا تود أن تفعل الآن؟"), buttons: [b.viewing, b.similar, b.agent] }]);
+    await botSay([{ kind: "text", text: L(lang, "That's the full pack. What would you like to do next?", "هذا هو الملف الكامل. ماذا تود أن تفعل الآن؟"), buttons: [b.more, b.similar, b.agent] }]);
   }
 
   function handover(reason: string) {
@@ -202,46 +262,21 @@ export function WhatsAppSim() {
       source: paramListing ? "Chat on WhatsApp button (listing page)" : "WhatsApp (direct)",
     };
 
-    // Lead routing per plan rules (FR-WAP-08).
-    let lead: Lead | undefined;
-    let routeNote = "";
-    if (l) {
-      const adv = advertiserById(l.advertiserId);
-      const plan = planById(adv.planId);
-      const channels = plan.features.whatsappLeads ? ["WhatsApp", "dashboard"] : ["email", "dashboard"];
-      lead = {
-        id: uid("L"),
-        listingId: l.id,
-        advertiserId: adv.id,
-        name: L(lang, "WhatsApp customer", "عميل واتساب"),
-        phone: CUSTOMER,
-        channel: "whatsapp",
-        message: reason,
-        createdAt: now.toISOString(),
-        status: "new",
-        score: /viewing|معاينة/i.test(reason) ? 86 : 72,
-        source: conv.source,
-      };
-      routeNote = `${lead.id} → ${adv.name.en} via ${channels.join(" + ")} (${plan.name.en} plan rule)`;
-    }
+    // Lead routing per plan rules (FR-WAP-08), through the shared lead pipeline.
+    const input = l ? leadInput(reason, /viewing|معاينة/i.test(reason)) : undefined;
+    if (input) logLead(input);
     const nowIso = now.toISOString();
-    update((s) => ({
-      ...s,
-      conversations: [conv, ...s.conversations],
-      leads: lead ? [lead, ...s.leads] : s.leads,
-      notifications: lead
-        ? [{ id: uid("N"), at: nowIso, channel: "whatsapp", to: advertiserById(lead.advertiserId).phone, template: "new_lead_routed", status: "sent" }, ...s.notifications]
-        : s.notifications,
-      audit: [
-        { id: uid("A"), at: nowIso, actor: "AI Support Agent", role: "ai", action: "conversation.handover", target: cid, detail: reason },
-        ...(lead ? [{ id: uid("A"), at: nowIso, actor: "System", role: "system" as const, action: "lead.routed", target: lead.id, detail: routeNote }] : []),
-        ...s.audit,
-      ],
-    }));
+    update((s) => {
+      const next = {
+        ...s,
+        conversations: [conv, ...s.conversations],
+        audit: [{ id: uid("A"), at: nowIso, actor: "AI Support Agent", role: "ai" as const, action: "conversation.handover", target: cid, detail: reason }, ...s.audit],
+      };
+      return input ? createLead(next, input).state : next;
+    });
     addLog("routing", `Handover → inbox ${cid} (SLA 15 min)`);
-    if (routeNote) addLog("routing", `Lead routed: ${routeNote}`);
     track("Contact", { channel: "whatsapp", listing_id: l?.id });
-    setAll((m) => [...m, { id: uid("sys"), from: "system", kind: "text", text: L(lang, `Connecting you to a MaxPro agent · ref ${cid}`, `جارٍ تحويلك إلى موظف ماكس برو · مرجع ${cid}`), at: Date.now() }]);
+    setAll((m) => [...m, { id: uid("sys"), from: "system", kind: "text", text: L(lang, `Connecting you to a AqarPro agent · ref ${cid}`, `جارٍ تحويلك إلى موظف عقار برو · مرجع ${cid}`), at: Date.now() }]);
     toast(t(`Handed over to inbox (${cid})`, `تم التحويل إلى صندوق الدعم (${cid})`));
   }
 
@@ -262,6 +297,7 @@ export function WhatsAppSim() {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as AssistantResult;
       setTyping(false);
+      update((s) => addAiUsage(s, "org-aqarpro", "assistant", data.engine === "claude" ? 2 : 1, `whatsapp · ${data.toolCalls.length} tool calls`));
       addLog("api", `assistant (${data.engine}) · tools: ${data.toolCalls.map((c) => c.name).join(", ") || "none"} · ${data.latencyMs} ms`);
       if (data.validation.removed.length) addLog("error", `validation removed unverified ids: ${data.validation.removed.join(", ")}`);
       if (data.listings[0]) setCtx(data.listings[0]);
@@ -281,7 +317,7 @@ export function WhatsAppSim() {
     } catch {
       setTyping(false);
       addLog("error", "assistant unavailable → fallback message");
-      await botSay([{ kind: "text", text: L(lang, "Sorry, I'm having trouble right now. A MaxPro agent will follow up.", "عذراً، هناك مشكلة حالياً. سيتابع معك أحد موظفي ماكس برو.") }]);
+      await botSay([{ kind: "text", text: L(lang, "Sorry, I'm having trouble right now. A AqarPro agent will follow up.", "عذراً، هناك مشكلة حالياً. سيتابع معك أحد موظفي عقار برو.") }]);
     }
   }
 
@@ -293,7 +329,7 @@ export function WhatsAppSim() {
     // Opt-out keywords are always honoured first (FR-WAP-06).
     if (/^(stop|unsubscribe|إيقاف|ايقاف|الغاء الاشتراك|إلغاء الاشتراك)$/i.test(text)) {
       recordConsent(false, `keyword "${text}"`);
-      await botSay([{ kind: "text", text: L(lang, "You've been unsubscribed from MaxPro updates. You can still message us any time. Reply START to opt back in.", "تم إلغاء اشتراكك في تحديثات ماكس برو. يمكنك مراسلتنا في أي وقت. أرسل START للاشتراك مجدداً.") }]);
+      await botSay([{ kind: "text", text: L(lang, "You've been unsubscribed from AqarPro updates. You can still message us any time. Reply START to opt back in.", "تم إلغاء اشتراكك في تحديثات عقار برو. يمكنك مراسلتنا في أي وقت. أرسل START للاشتراك مجدداً.") }]);
       return;
     }
     if (/^start$/i.test(text)) {
@@ -305,25 +341,27 @@ export function WhatsAppSim() {
     if (convRef.current) return; // a human has the conversation now
 
     // First contact: ask for marketing opt-in before anything else.
-    if (consent === null && pendingRef.current === null && !msgsRef.current.some((m) => m.buttons?.includes(b.yes))) {
+    if (consent === null && pendingRef.current === null && !msgsRef.current.some((m) => m.buttons?.includes(b.yes) || /Reply YES|أرسل نعم/.test(m.text ?? ""))) {
       pendingRef.current = text;
-      const idm = text.toUpperCase().match(/MP-\d{5}/);
+      const idm = text.toUpperCase().match(/AQ-\d{5}/);
       if (idm) setCtx(idm[0]);
       await botSay([
         {
           kind: "text",
           text: L(
             lang,
-            "Welcome to MaxPro 👋 Before we start: may we send you property updates (new matches, price drops) on WhatsApp? You can reply STOP at any time.",
-            "أهلاً بك في ماكس برو 👋 قبل أن نبدأ: هل توافق على استلام تحديثات العقارات (عقارات مطابقة، انخفاض الأسعار) عبر واتساب؟ يمكنك إرسال STOP في أي وقت.",
-          ),
-          buttons: [b.yes, b.no],
+            "Welcome to AqarPro 👋 Before we start: may we send you property updates (new matches, price drops) on WhatsApp? You can reply STOP at any time.",
+            "أهلاً بك في عقار برو 👋 قبل أن نبدأ: هل توافق على استلام تحديثات العقارات (عقارات مطابقة، انخفاض الأسعار) عبر واتساب؟ يمكنك إرسال STOP في أي وقت.",
+          ) + (s2Ref.current ? "" : L(lang, "\n\nReply YES or NO.", "\n\nأرسل نعم أو لا.")),
+          buttons: s2Ref.current ? [b.yes, b.no] : undefined,
         },
       ]);
       return;
     }
-    if (text === b.yes || text === b.no || text === btnLabels(lang === "en" ? "ar" : "en").yes || text === btnLabels(lang === "en" ? "ar" : "en").no) {
-      const yes = text === b.yes || text === btnLabels(lang === "en" ? "ar" : "en").yes;
+    const typedYes = pendingRef.current !== null && consent === null && /^(yes|y|نعم)$/i.test(text);
+    const typedNo = pendingRef.current !== null && consent === null && /^(no|n|لا)$/i.test(text);
+    if (typedYes || typedNo || text === b.yes || text === b.no || text === btnLabels(lang === "en" ? "ar" : "en").yes || text === btnLabels(lang === "en" ? "ar" : "en").no) {
+      const yes = typedYes || text === b.yes || text === btnLabels(lang === "en" ? "ar" : "en").yes;
       recordConsent(yes, "first-message opt-in prompt");
       const pending = pendingRef.current;
       pendingRef.current = "";
@@ -335,8 +373,23 @@ export function WhatsAppSim() {
 
     async function route(q: string) {
       const lq = q.toLowerCase();
-      const idm = q.toUpperCase().match(/MP-\d{5}/);
+      const idm = q.toUpperCase().match(/AQ-\d{5}/);
       if (idm && getListing(idm[0])) setCtx(idm[0]);
+      if (!s2Ref.current) {
+        // Stage 1 scope (FR-WAP-01/02/06): text reply with the listing link; the enquiry is recorded as a basic lead.
+        const l = getListing(ctxRef.current);
+        addLog("api", "S1 scope: text reply only — property packs, buttons and AI replies are Stage 2");
+        if (l) captureLead(`Chat on WhatsApp: ${q}`);
+        await botSay([
+          {
+            kind: "text",
+            text: l
+              ? L(lang, `Thanks! Here is ${l.id}: aqarpro.qa/${lang}/listing/${l.id}\nThe advertiser has your enquiry and will reply here.`, `شكراً! هذا هو ${l.id}: aqarpro.qa/${lang}/listing/${l.id}\nوصل طلبك إلى المعلن وسيرد عليك هنا.`)
+              : L(lang, "Thanks for your message — browse listings at aqarpro.qa and tap “Chat on WhatsApp” on any property.", "شكراً لرسالتك — تصفح الإعلانات على aqarpro.qa واضغط «تواصل عبر واتساب» على أي عقار."),
+          },
+        ]);
+        return;
+      }
       if (/property pack|ملف العقار|send.*pack/i.test(lq)) return sendPack(idm?.[0] ?? ctxRef.current);
       if (lq === b.viewing.toLowerCase() || /book a viewing|حجز معاينة/.test(lq)) {
         await botSay([
@@ -356,6 +409,10 @@ export function WhatsAppSim() {
         ]);
         return;
       }
+      if (lq === b.more.toLowerCase() || /more photos|صور إضافية/.test(lq)) {
+        captureLead("Asked for more photos");
+        return sendMorePhotos();
+      }
       if (/^(sat|sun|السبت|الأحد)\s/i.test(q)) {
         await botSay([{ kind: "text", text: L(lang, `Great — I've requested ${q}. An agent will confirm with the owner shortly.`, `ممتاز — طلبت موعد ${q}. سيؤكد الموظف مع المالك قريباً.`) }]);
         handover(`Viewing request: ${q}`);
@@ -364,7 +421,8 @@ export function WhatsAppSim() {
       if (lq === b.similar.toLowerCase() || /similar|مشابه/.test(lq)) {
         const l = getListing(ctxRef.current);
         if (!l) return askAssistant(q);
-        const sims = similarListings(state.listings, l, 3);
+        captureLead("Asked for similar properties");
+        const sims = similarListings(stateRef.current.listings, l, 3);
         await botSay([
           {
             kind: "list",
@@ -425,7 +483,7 @@ export function WhatsAppSim() {
           name: tp.name,
           header: tp.name === "new_match_alert" ? L(lang, "🔔 New match", "🔔 عقار مطابق") : L(lang, "📉 Price drop", "📉 انخفاض السعر"),
           body,
-          footer: L(lang, "MaxPro · Reply STOP to unsubscribe", "ماكس برو · أرسل STOP لإلغاء الاشتراك"),
+          footer: L(lang, "AqarPro · Reply STOP to unsubscribe", "عقار برو · أرسل STOP لإلغاء الاشتراك"),
           buttons: [btnLabels(lang).pack, btnLabels(lang).agent],
         },
       },
@@ -454,7 +512,7 @@ export function WhatsAppSim() {
     if (started.current) return;
     started.current = true;
     addLog("webhook", "Webhook verified · subscribed fields: messages, message_template_status_update");
-    addLog("api", "Phone number +974 4000 1234 · display name “MaxPro” · quality rating GREEN · Cloud API");
+    addLog("api", "Phone number +974 4000 1234 · display name “AqarPro” · quality rating GREEN · Cloud API");
     if (paramListing) {
       const first = wantsPack
         ? L(langRef.current, `Please send me the property pack for ${paramListing}`, `أرسل لي ملف العقار ${paramListing} من فضلك`)
@@ -485,7 +543,7 @@ export function WhatsAppSim() {
     const fresh = conv.messages.filter((m) => m.from === "agent" && !shownAgentIds.current.has(m.id));
     if (!fresh.length) return;
     fresh.forEach((m) => shownAgentIds.current.add(m.id));
-    setAll((all) => [...all, ...fresh.map((m) => ({ id: m.id, from: "agent" as const, kind: "text" as const, text: m.text, at: Date.now(), agentName: conv.assignee ?? "MaxPro agent" }))]);
+    setAll((all) => [...all, ...fresh.map((m) => ({ id: m.id, from: "agent" as const, kind: "text" as const, text: m.text, at: Date.now(), agentName: conv.assignee ?? "AqarPro agent" }))]);
     addLog("api", `agent reply sent from inbox · ${fresh.length} message(s)`);
   }, [state.conversations, convId, addLog]);
 
@@ -513,15 +571,30 @@ export function WhatsAppSim() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">{t("WhatsApp experience", "تجربة واتساب")}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+            {t("WhatsApp experience", "تجربة واتساب")}
+            <StageBadge s="S1" />
+            <StageBadge s="S2" />
+          </h1>
           <p className="mt-1 max-w-2xl text-sm text-stone-500">
             {t(
               "A live simulation of the customer's WhatsApp. Try: “2 bed in The Pearl under 13k”, the reply buttons, “Property pack”, “Talk to agent”, or STOP. Agent replies from the Support inbox appear here.",
               "محاكاة حية لواتساب العميل. جرّب: “شقة غرفتين في اللؤلؤة بأقل من 13 ألف”، أو الأزرار، أو “ملف العقار”، أو “تحدث مع موظف”، أو STOP. ردود الموظفين من صندوق الدعم تظهر هنا.",
             )}
           </p>
+          {!s2 && (
+            <p className="mt-2 max-w-2xl rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              {t(
+                "Stage 1 view: official number, opt-in / STOP and “Chat on WhatsApp” with the listing ID. Property packs, reply buttons, templates and lead routing switch on in Stage 2.",
+                "عرض المرحلة الأولى: الرقم الرسمي والاشتراك/STOP و«تواصل عبر واتساب» برقم الإعلان. ملفات العقار والأزرار والقوالب وتوجيه العملاء تُفعّل في المرحلة الثانية.",
+              )}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
+          <Link href={href("/advertiser/leads")} className={btn.secondary}>
+            {t("Lead manager", "إدارة العملاء")}
+          </Link>
           <Link href={href("/inbox")} className={btn.secondary}>
             {t("Open support inbox", "فتح صندوق الدعم")}
           </Link>
@@ -543,7 +616,10 @@ export function WhatsAppSim() {
 
         <div className="space-y-4">
           <Card className="p-4">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-900">{t("Conversation context", "سياق المحادثة")}</h2>
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-900">
+              {t("Conversation context", "سياق المحادثة")}
+              <StageBadge s="S1" />
+            </h2>
             <div className="mt-3 grid grid-cols-1 gap-3 text-xs text-stone-600 sm:grid-cols-2">
               <div>
                 <div className="text-stone-400">{t("Customer", "العميل")}</div>
@@ -580,10 +656,12 @@ export function WhatsAppSim() {
             )}
           </Card>
 
+          <StageGate stage="S2" label={t("Template messages — Stage 2 (FR-WAP-05)", "قوالب الرسائل — المرحلة الثانية (FR-WAP-05)")}>
           <Card className="p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-900">
               <FileText className="h-4 w-4 text-brand-600" />
               {t("Message templates (outside the 24-hour window)", "قوالب الرسائل (خارج نافذة 24 ساعة)")}
+              <StageBadge s="S2" />
             </h2>
             <div className="mt-3 divide-y divide-stone-100">
               {tpls.map((tp) => (
@@ -606,6 +684,7 @@ export function WhatsAppSim() {
               ))}
             </div>
           </Card>
+          </StageGate>
 
           <Card className="p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-900">
@@ -628,7 +707,7 @@ export function WhatsAppSim() {
           </Card>
 
           <Card className="p-4">
-            <h2 className="text-sm font-semibold text-stone-900">{t("Consent log", "سجل الموافقات")}</h2>
+            <h2 className="text-sm font-semibold text-stone-900">{t("Consent log", "سجل الموافقات")} <StageBadge s="S1" className="ms-1" /></h2>
             <div className="mt-2 space-y-1 text-xs">
               {myConsents.length === 0 && <div className="text-stone-400">{t("No consent recorded yet for this number.", "لا توجد موافقات مسجلة لهذا الرقم بعد.")}</div>}
               {myConsents.map((c) => (

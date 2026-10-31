@@ -57,10 +57,10 @@ export function Phone({
         {/* Header */}
         <div className="flex items-center gap-2 bg-[#008069] px-3 pb-2.5 pt-7 text-white">
           <ArrowLeft className="flip-rtl h-5 w-5" />
-          <Image src="/img/icon.svg" alt="" width={36} height={36} unoptimized className="h-9 w-9 rounded-full" />
+          <Image src="/img/icon.png" alt="" width={36} height={36} unoptimized className="h-9 w-9 rounded-full" />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="flex items-center gap-1 text-[15px] font-semibold">
-              MaxPro <BadgeCheck className="h-4 w-4 fill-[#25d366] text-[#008069]" />
+              AqarPro <BadgeCheck className="h-4 w-4 fill-[#25d366] text-[#008069]" />
             </div>
             <div className="truncate text-[11px] text-white/80">{typing ? labels.typing : labels.business}</div>
           </div>

@@ -1,9 +1,9 @@
 {
-  "name": "MaxPro — Qatar Property",
-  "short_name": "MaxPro",
+  "name": "AqarPro — Qatar Property",
+  "short_name": "AqarPro",
   "start_url": "/en",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0068e6",
-  "icons": [{ "src": "/img/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [{ "src": "/img/icon.png", "sizes": "512x512", "type": "image/png" }]
 }

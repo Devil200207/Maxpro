@@ -12,6 +12,7 @@ import { toast } from "@/components/Toaster";
 import { Badge, btn, Card, cn, input } from "@/components/ui";
 import { downloadCsv, useNow } from "@/components/inbox/channel";
 import { SectionHead } from "./shared";
+import { StageGate, useStage } from "@/lib/stage";
 import { Toggle } from "./Config";
 import { roleCls } from "./Overview";
 
@@ -29,18 +30,18 @@ interface Template {
 }
 
 const seedTemplates: Template[] = [
-  { id: "listing_approved", channel: "whatsapp", name: "Listing approved", waApproval: "approved", body: { en: "Good news {{name}}! Your listing {{listing_id}} is now live on MaxPro. View it: {{url}}", ar: "خبر سار {{name}}! إعلانك {{listing_id}} أصبح منشوراً على ماكس برو. شاهده: {{url}}" } },
+  { id: "listing_approved", channel: "whatsapp", name: "Listing approved", waApproval: "approved", body: { en: "Good news {{name}}! Your listing {{listing_id}} is now live on AqarPro. View it: {{url}}", ar: "خبر سار {{name}}! إعلانك {{listing_id}} أصبح منشوراً على عقار برو. شاهده: {{url}}" } },
   { id: "new_match", channel: "whatsapp", name: "New match alert", waApproval: "approved", body: { en: "A new property matches your saved search “{{search}}”: {{title}} — {{price}}. Reply STOP to unsubscribe.", ar: "عقار جديد يطابق بحثك المحفوظ “{{search}}”: {{title}} — {{price}}. أرسل STOP لإلغاء الاشتراك." } },
   { id: "price_drop", channel: "whatsapp", name: "Price drop", waApproval: "pending", body: { en: "Price dropped on {{title}}: now {{price}}. Reply STOP to unsubscribe.", ar: "انخفض سعر {{title}}: الآن {{price}}. أرسل STOP لإلغاء الاشتراك." } },
   { id: "listing_rejected", channel: "email", name: "Listing rejected", body: { en: "Hi {{name}}, your listing {{listing_id}} needs changes: {{reasons}}. Edit and resubmit from your dashboard.", ar: "مرحباً {{name}}، إعلانك {{listing_id}} يحتاج تعديلات: {{reasons}}. عدّله وأعد إرساله من لوحة التحكم." } },
-  { id: "otp_login", channel: "sms", name: "Login OTP", body: { en: "Your MaxPro code is {{otp}}. It expires in 5 minutes.", ar: "رمز ماكس برو الخاص بك هو {{otp}}. صالح لمدة 5 دقائق." } },
+  { id: "otp_login", channel: "sms", name: "Login OTP", body: { en: "Your AqarPro code is {{otp}}. It expires in 5 minutes.", ar: "رمز عقار برو الخاص بك هو {{otp}}. صالح لمدة 5 دقائق." } },
   { id: "lead_forwarded", channel: "inapp", name: "New lead", body: { en: "New lead for {{listing_id}} from {{customer}} via {{channel}}.", ar: "عميل جديد لـ {{listing_id}} من {{customer}} عبر {{channel}}." } },
 ];
 
 const sampleVars: Record<string, string> = {
   name: "Pearl Gate Realty",
-  listing_id: "MP-10231",
-  url: "maxpro.qa/l/MP-10231",
+  listing_id: "AQ-10231",
+  url: "aqarpro.qa/l/AQ-10231",
   search: "2BR Pearl < 13k",
   title: "Sea-view 2BR, Porto Arabia",
   price: "QAR 12,500",
@@ -65,6 +66,7 @@ export function Notifications() {
         title={t("Notification engine", "محرك الإشعارات")}
         desc={t("Email, SMS/OTP, WhatsApp and in-app messages from editable bilingual templates, with a delivery log.", "رسائل البريد والرسائل النصية وواتساب والإشعارات الداخلية من قوالب ثنائية اللغة مع سجل تسليم.")}
         req={["FR-ADM-04", "FR-WAP-05"]}
+        stage="S1"
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.1fr]">
@@ -179,7 +181,17 @@ export function Notifications() {
 
 // ---------------- AI console ----------------
 
+/** AI console (WP-SUP-08/10) ships with the agents in Stage 2. */
 export function AiConsole() {
+  const { t } = useLang();
+  return (
+    <StageGate stage="S2" label={t("AI console — Stage 2", "وحدة الذكاء الاصطناعي — المرحلة الثانية")}>
+      <AiConsoleInner />
+    </StageGate>
+  );
+}
+
+function AiConsoleInner() {
   const { lang, t, p, href } = useLang();
   const { state, audit } = useStore();
   const now = useNow(30000);
@@ -215,6 +227,7 @@ export function AiConsole() {
           "مراجعة المحادثات ونتائج التقييم ومراقبة التكلفة وقاعدة المعرفة وضوابط وكلاء الدعم والتسويق.",
         )}
         req={["WP-SUP-08", "WP-SUP-10", "WP-SUP-07"]}
+        stage="S2"
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -396,6 +409,7 @@ const ROLES: AuditEntry["role"][] = ["admin", "moderator", "agent", "ai", "adver
 export function AuditTrail() {
   const { lang, t } = useLang();
   const { state } = useStore();
+  const s2 = useStage().visible("S2");
   const now = useNow(30000);
   const [roles, setRoles] = useState<string[]>([]);
   const [q, setQ] = useState("");
@@ -407,7 +421,7 @@ export function AuditTrail() {
       (!q || `${a.actor} ${a.action} ${a.target ?? ""} ${a.detail ?? ""}`.toLowerCase().includes(q.toLowerCase())),
   );
 
-  const exportCsv = () => downloadCsv("maxpro-audit.csv", [["id", "time", "actor", "role", "action", "target", "detail", "hash"], ...rows.map((a) => [a.id, a.at, a.actor, a.role, a.action, a.target, a.detail, hashes[a.id]])]);
+  const exportCsv = () => downloadCsv("aqarpro-audit.csv", [["id", "time", "actor", "role", "action", "target", "detail", "hash"], ...rows.map((a) => [a.id, a.at, a.actor, a.role, a.action, a.target, a.detail, hashes[a.id]])]);
 
   return (
     <div>
@@ -418,11 +432,15 @@ export function AuditTrail() {
           "سجل إلحاقي فقط لإجراءات الإدارة والمراجعين والدعم ووكلاء الذكاء. لا يمكن تعديل أو حذف السجلات؛ كل سطر مرتبط بتجزئة السطر السابق.",
         )}
         req={["FR-ADM-05", "WP-MKT-07"]}
+        stage="S1"
         actions={
-          <button onClick={exportCsv} className={cn(btn.secondary, "py-1.5 text-xs")}>
-            <Download className="h-3.5 w-3.5" />
-            {t("Export CSV", "تصدير CSV")}
-          </button>
+          // Exports and scheduled reports are FR-ADM-06 (Stage 2).
+          s2 && (
+            <button onClick={exportCsv} className={cn(btn.secondary, "py-1.5 text-xs")}>
+              <Download className="h-3.5 w-3.5" />
+              {t("Export CSV", "تصدير CSV")}
+            </button>
+          )
         }
       />
 

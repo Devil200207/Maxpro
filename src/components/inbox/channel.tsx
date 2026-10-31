@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { Bot, Globe, Megaphone, MessageCircle } from "lucide-react";
+import { Bot, Globe, Megaphone, MessageCircle, Network } from "lucide-react";
 import type { Bi } from "@/lib/i18n";
 import type { Channel } from "@/lib/store";
 import { cn } from "../ui";
@@ -11,6 +11,7 @@ export const channelMeta: Record<Channel, { name: Bi; icon: typeof Bot; cls: str
   web: { name: { en: "Web enquiry", ar: "استفسار الموقع" }, icon: Globe, cls: "bg-sky-50 text-sky-700" },
   ai: { name: { en: "AI chat", ar: "المحادثة الذكية" }, icon: Bot, cls: "bg-violet-50 text-violet-700" },
   meta: { name: { en: "Meta lead", ar: "عميل ميتا" }, icon: Megaphone, cls: "bg-blue-50 text-blue-700" },
+  portal: { name: { en: "Portal lead", ar: "عميل من بوابة" }, icon: Network, cls: "bg-amber-50 text-amber-700" },
 };
 
 export function ChannelIcon({ channel, className }: { channel: Channel; className?: string }) {

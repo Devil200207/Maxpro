@@ -15,6 +15,8 @@ import {
   Home as HomeIcon,
   Landmark,
   MessageCircle,
+  Network,
+  Users,
   Scale,
   Search,
   ShieldCheck,
@@ -28,6 +30,7 @@ import { useLang } from "@/lib/useLang";
 import { paramsFromQuery } from "@/lib/search";
 import { ListingCard } from "@/components/ListingCard";
 import { Badge, btn, Card, cn, ReqTag } from "@/components/ui";
+import { StageBadge, StageGate } from "@/lib/stage";
 
 const typeIcons: Record<PropertyType, typeof Building> = {
   apartment: Building,
@@ -249,7 +252,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WhatsApp + AI strip */}
+      {/* WhatsApp + AI strip — property packs and the AI assistant are Stage 2 */}
+      <StageGate stage="S2" mode="hide">
       <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6">
         <div className="grid grid-cols-1 overflow-hidden rounded-3xl bg-navy-900 text-white lg:grid-cols-2">
           <div className="p-8 sm:p-10">
@@ -257,6 +261,7 @@ export default function Home() {
               <MessageCircle className="h-3 w-3" />
               {t("WhatsApp-first", "واتساب أولاً")}
             </Badge>
+            <StageBadge s="S2" className="ms-2" />
             <h2 className="mt-4 text-2xl font-bold sm:text-3xl">
               {t("The whole property, delivered to your WhatsApp", "العقار كاملاً يصلك على واتساب")}
             </h2>
@@ -267,7 +272,7 @@ export default function Home() {
               )}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href={href("/whatsapp?listing=MP-10231&pack=1")} className={btn.wa}>
+              <Link href={href("/whatsapp?listing=AQ-10231&pack=1")} className={btn.wa}>
                 <MessageCircle className="h-4 w-4" />
                 {t("Try the WhatsApp demo", "جرّب عرض واتساب")}
               </Link>
@@ -278,6 +283,7 @@ export default function Home() {
               <Bot className="h-3 w-3" />
               {t("AI assistant", "المساعد الذكي")}
             </Badge>
+            <StageBadge s="S2" className="ms-2" />
             <h2 className="mt-4 text-2xl font-bold sm:text-3xl">{t("Just describe what you need", "فقط صِف ما تحتاجه")}</h2>
             <p className="mt-3 text-stone-300">
               {t(
@@ -300,6 +306,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </StageGate>
 
       {/* Popular zones */}
       <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6">
@@ -351,7 +358,7 @@ export default function Home() {
 
       {/* Service verticals */}
       <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6">
-        <h2 className="text-xl font-bold text-stone-900">{t("More from MaxPro", "المزيد من ماكس برو")}</h2>
+        <h2 className="text-xl font-bold text-stone-900">{t("More from AqarPro", "المزيد من عقار برو")}</h2>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: Building, title: t("Property", "العقارات"), desc: t("Rent and buy across Qatar", "إيجار وشراء في جميع أنحاء قطر"), to: "/search" },
@@ -391,7 +398,7 @@ export default function Home() {
           <div className="absolute -bottom-20 end-32 h-48 w-48 rounded-full bg-accent-400/20" />
           <div className="relative flex flex-wrap items-center justify-between gap-6">
             <div className="max-w-xl">
-              <h2 className="text-2xl font-bold sm:text-3xl">{t("Advertise with MaxPro", "أعلن مع ماكس برو")}</h2>
+              <h2 className="text-2xl font-bold sm:text-3xl">{t("Advertise with AqarPro", "أعلن مع عقار برو")}</h2>
               <p className="mt-2 text-brand-100">
                 {t(
                   "Subscription plans for owners, brokers and agencies — with WhatsApp lead routing, analytics and managed Meta campaigns.",
@@ -408,6 +415,22 @@ export default function Home() {
                 {t("Post a listing", "أضف إعلان")}
               </Link>
             </div>
+          </div>
+          <div className="relative mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              { icon: Sparkles, to: "/advertiser/studio", title: t("AI Listing Studio", "استوديو الإعلانات الذكي"), text: t("Paste details or upload photos — get Arabic and English listings with quality checks.", "الصق التفاصيل أو ارفع الصور — واحصل على إعلان بالعربية والإنجليزية مع فحص الجودة.") },
+              { icon: Network, to: "/hub", title: t("Portal Integration Hub", "مركز ربط البوابات"), text: t("Publish one listing to several property portals, with status and safe retries.", "انشر إعلاناً واحداً على عدة بوابات مع متابعة الحالة وإعادة المحاولة بأمان.") },
+              { icon: Users, to: "/advertiser/leads", title: t("Lead manager", "إدارة العملاء"), text: t("Every enquiry in one place — assign, follow up and see what converts.", "كل الاستفسارات في مكان واحد — عيّن وتابع واعرف ما يتحول إلى صفقة.") },
+            ].map((f) => (
+              <Link key={f.to} href={href(f.to)} className="group rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 transition hover:bg-white/15">
+                <div className="flex items-center gap-2">
+                  <f.icon className="h-5 w-5 text-accent-300" />
+                  <span className="font-semibold">{f.title}</span>
+                  <StageBadge s="S1" className="ms-auto" />
+                </div>
+                <p className="mt-1.5 text-sm text-brand-100">{f.text}</p>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

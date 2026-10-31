@@ -10,10 +10,8 @@ import { PhotoStep, requiredCats, type Photo } from "@/components/advertiser/Pho
 import {
   advertiserById,
   amenities,
-  DEMO_ADVERTISER_ID,
   DEMO_NOW,
   furnishingName,
-  planById,
   propertyTypes,
   typeName,
   zoneById,
@@ -25,6 +23,9 @@ import {
 } from "@/lib/data";
 import { autoChecks } from "@/lib/moderation";
 import { uid, useStore } from "@/lib/store";
+import { changeEntry, useAccount } from "@/components/account/useAccount";
+import { AccountBar, VerificationBanner } from "@/components/account/AccountBar";
+import { StageBadge } from "@/lib/stage";
 import { useLang } from "@/lib/useLang";
 
 interface Draft {
@@ -81,7 +82,7 @@ const EMPTY: Draft = {
   watermark: true,
 };
 
-const DRAFT_KEY = "maxpro-draft";
+const DRAFT_KEY = "aqarpro-draft";
 const DAY = 86400000;
 
 // Template-based suggestion from the structured fields (stand-in for an MT API).
@@ -104,16 +105,16 @@ function suggest(d: Draft, lang: "en" | "ar") {
   };
 }
 
-function toListing(d: Draft, id: string, now: number): Listing {
+function toListing(d: Draft, id: string, now: number, advertiserId: string, assignedAgentId?: string, status: Listing["status"] = "pending"): Listing {
   const z = zoneById(d.zoneId);
-  const adv = advertiserById(DEMO_ADVERTISER_ID);
+  const adv = advertiserById(advertiserId);
   return {
     id,
     orgId: adv.orgId,
     advertiserId: adv.id,
     purpose: d.purpose,
     type: d.type,
-    status: "pending",
+    status,
     title: { en: d.titleEn, ar: d.titleAr },
     description: { en: d.descEn, ar: d.descAr },
     price: d.price,
@@ -144,6 +145,8 @@ function toListing(d: Draft, id: string, now: number): Listing {
     expiresAt: new Date(now + 60 * DAY).toISOString(),
     source: "manual",
     stats: { views: 0, saves: 0, enquiries: 0, waClicks: 0 },
+    assignedAgentId,
+    priceHistory: [{ at: new Date(now).toISOString(), price: d.price }],
   };
 }
 
@@ -193,15 +196,17 @@ export default function NewListingPage() {
   }, [d, lang]);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
-  const plan = planById(state.subscription.planId);
-  const active = state.listings.filter((l) => l.advertiserId === DEMO_ADVERTISER_ID && ["live", "pending", "paused"].includes(l.status)).length;
+  const acct = useAccount();
+  const { adv, plan, active, can, role, session, aiUsed, actorName } = acct;
+  const assignee = role === "agent" ? session.memberId : undefined;
+  const aiLeft = plan.quotas.aiCredits - aiUsed;
 
   const nextId = useMemo(() => {
-    const max = state.listings.reduce((m, x) => Math.max(m, Number(x.id.replace("MP-", "")) || 0), 0);
-    return `MP-${max + 1}`;
+    const max = state.listings.reduce((m, x) => Math.max(m, Number(x.id.replace("AQ-", "")) || 0), 0);
+    return `AQ-${max + 1}`;
   }, [state.listings]);
 
-  const preview = useMemo(() => toListing(d, nextId, DEMO_NOW), [d, nextId]);
+  const preview = useMemo(() => toListing(d, nextId, DEMO_NOW, adv.id, assignee), [d, nextId, adv.id, assignee]);
   const checks = useMemo(() => autoChecks(preview, state.listings), [preview, state.listings]);
   const blocked = checks.some((c) => c.level === "block");
   const overQuota = active >= plan.quotas.listings;
@@ -213,28 +218,43 @@ export default function NewListingPage() {
     d.price > 0 && d.area > 0,
     d.titleEn.trim().length > 5 && d.titleAr.trim().length > 3 && d.descEn.trim().length > 20 && d.descAr.trim().length > 10,
     true,
-    !blocked && !overQuota,
+    !blocked && !overQuota && adv.verified && can.edit,
   ];
 
-  const submit = () => {
-    const listing = toListing(d, nextId, new Date().getTime());
+  const save = (status: "pending" | "draft") => {
+    const listing = toListing(d, nextId, new Date().getTime(), adv.id, assignee, status);
     const at = new Date().toISOString();
     const warn = checks.filter((c) => c.level === "warn").map((c) => c.id);
     update((s) => ({
       ...s,
       listings: [listing, ...s.listings],
+      changeLog: [changeEntry(listing.id, actorName, "created", undefined, status), ...s.changeLog],
       audit: [
-        { id: uid("A"), at, actor: "System", role: "system", action: "moderation.auto_checks", target: listing.id, detail: warn.length ? `warnings: ${warn.join(", ")}` : "clean" },
-        { id: uid("A"), at, actor: advertiserById(DEMO_ADVERTISER_ID).name.en, role: "advertiser", action: "listing.submitted", target: listing.id, detail: `source=manual; photos=${listing.media.length}` },
+        ...(status === "pending"
+          ? [
+              { id: uid("A"), at, actor: "System", role: "system" as const, action: "moderation.auto_checks", target: listing.id, detail: warn.length ? `warnings: ${warn.join(", ")}` : "clean" },
+              { id: uid("A"), at, actor: "System", role: "system" as const, action: "plan.quota_checked", target: listing.id, detail: `${active + 1}/${plan.quotas.listings} (${plan.id})` },
+            ]
+          : []),
+        { id: uid("A"), at, actor: actorName, role: "advertiser", action: status === "pending" ? "listing.submitted" : "listing.draft_saved", target: listing.id, detail: `source=manual; photos=${listing.media.length}` },
         ...s.audit,
       ],
     }));
     localStorage.removeItem(DRAFT_KEY);
+    if (status === "draft") {
+      toast(t(`Draft ${listing.id} saved`, `تم حفظ المسودة ${listing.id}`));
+      router.push(`/${lang}/advertiser?tab=listings`);
+      return;
+    }
     toast(t("Submitted for moderation", "تم الإرسال للمراجعة"));
     router.push(`/${lang}/advertiser?submitted=${listing.id}`);
   };
+  const submit = () => save("pending");
 
   const fillSuggestion = (target: "en" | "ar") => {
+    // AIS-05 / BIL-09: each machine-translation suggestion is metered against plan AI credits.
+    if (aiLeft < 2) return toast(t("AI credits used up for this month — upgrade or buy an add-on", "نفدت أرصدة الذكاء الاصطناعي لهذا الشهر — قم بالترقية"));
+    update((st) => ({ ...st, aiUsage: [{ id: uid("AI"), orgId: adv.orgId, at: new Date().toISOString(), feature: "studio_write" as const, credits: 2, detail: `suggest ${target}` }, ...st.aiUsage] }));
     const s = suggest(d, target);
     setD((x) => (target === "en" ? { ...x, titleEn: s.title, descEn: s.desc } : { ...x, titleAr: s.title, descAr: s.desc }));
   };
@@ -245,11 +265,19 @@ export default function NewListingPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <AccountBar />
+      <VerificationBanner />
+      {!can.edit && (
+        <div className="mb-5 rounded-2xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
+          {t("Read-only users can view listings but cannot create them. Switch “Acting as” to an agent, manager or owner.", "مستخدم القراءة فقط لا يمكنه إنشاء إعلانات. بدّل «بصفة» إلى وكيل أو مدير أو مالك.")}
+        </div>
+      )}
       <PageTitle
         title={t("Post a listing", "أضف إعلاناً")}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            {p(advertiserById(DEMO_ADVERTISER_ID).name)} · {active}/{plan.quotas.listings} {t("listings used", "إعلان مستخدم")}
+            {p(adv.name)} · {active}/{plan.quotas.listings} {t("listings used", "إعلان مستخدم")} · {Math.max(0, aiLeft)} {t("AI credits left", "رصيد ذكاء متبقٍ")}
+            <StageBadge s="S1" />
             <ReqTag id="FR-LST-01" />
           </span>
         }
@@ -483,7 +511,17 @@ export default function NewListingPage() {
               <div className={cn("flex items-center gap-3 rounded-xl border p-3 text-sm", overQuota ? "border-red-200 bg-red-50 text-red-900" : "border-stone-200 bg-stone-50 text-stone-700")}>
                 {overQuota ? <OctagonX className="h-4 w-4" /> : <Check className="h-4 w-4 text-emerald-600" />}
                 {t("Plan quota", "حد الباقة")}: {active} / {plan.quotas.listings} {t("active listings", "إعلان نشط")} ({p(plan.name)})
+                <ReqTag id="BIL-09" className="ms-auto" />
               </div>
+              <div className={cn("flex items-center gap-3 rounded-xl border p-3 text-sm", adv.verified ? "border-stone-200 bg-stone-50 text-stone-700" : "border-amber-200 bg-amber-50 text-amber-900")}>
+                {adv.verified ? <Check className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4" />}
+                {adv.verified
+                  ? t("Advertiser verified — listing can be submitted for moderation", "المعلن موثق — يمكن إرسال الإعلان للمراجعة")
+                  : t("Advertiser not verified yet — you can save this as a draft and submit once verified", "المعلن غير موثق بعد — احفظ مسودة وأرسلها بعد التوثيق")}
+              </div>
+              {assignee && (
+                <p className="text-xs text-stone-500">{t("Will be assigned to you as the listing agent.", "سيُسند إليك كوكيل الإعلان.")}</p>
+              )}
               {requiredCats(d.beds).some((c) => !d.photos.some((x) => x.cat === c)) && (
                 <p className="text-xs text-stone-500">{t("Tip: go back to Photos and use sample photos to complete the gallery.", "نصيحة: ارجع إلى الصور واستخدم الصور التجريبية لإكمال المعرض.")}</p>
               )}
@@ -514,10 +552,15 @@ export default function NewListingPage() {
             <ArrowRight className="flip-rtl h-4 w-4" />
           </button>
         ) : (
-          <button onClick={submit} disabled={!stepValid[4]} className={btn.primary}>
-            <Send className="flip-rtl h-4 w-4" />
-            {t("Submit for moderation", "إرسال للمراجعة")}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => save("draft")} disabled={!can.edit || !stepValid[2]} className={btn.secondary}>
+              {t("Save as draft", "حفظ كمسودة")}
+            </button>
+            <button onClick={submit} disabled={!stepValid[4]} title={adv.verified ? undefined : t("Verification required before publishing", "التوثيق مطلوب قبل النشر")} className={btn.primary}>
+              <Send className="flip-rtl h-4 w-4" />
+              {t("Submit for moderation", "إرسال للمراجعة")}
+            </button>
+          </div>
         )}
       </div>
       {d.step === 2 && !stepValid[2] && (

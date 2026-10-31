@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { BookOpen, Bot, Headset, Loader2, Mic, Send, Sparkles, ThumbsDown, ThumbsUp, UserRound, X } from "lucide-react";
 import { advertiserById } from "@/lib/data";
 import { priceLabel } from "@/lib/format";
-import { uid, useStore, type ChatMsg, type Conversation, type Lead } from "@/lib/store";
+import { uid, useStore, type ChatMsg, type Conversation } from "@/lib/store";
+import { addAiUsage, createLead } from "@/lib/leads";
+import { useStage } from "@/lib/stage";
 import { track } from "@/lib/tracking";
 import { useLang } from "@/lib/useLang";
 import type { AssistantResult } from "@/lib/assistant/types";
@@ -49,7 +51,10 @@ export function AssistantWidget() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, busy]);
 
-  if (pathname?.includes("/whatsapp")) return null;
+  const { visible } = useStage();
+
+  // WP-SUP-01..08 belong to Stage 2; the S1 view hides the assistant entirely.
+  if (pathname?.includes("/whatsapp") || !visible("S2")) return null;
 
   const listingById = (id: string) => state.listings.find((l) => l.id === id);
 
@@ -94,8 +99,8 @@ export function AssistantWidget() {
         id: uid("w"),
         role: "system",
         text: t(
-          `You're now in the support queue (ref ${id}). A MaxPro agent will reply here — typical response under 10 minutes.`,
-          `أنت الآن في قائمة الدعم (مرجع ${id}). سيرد عليك أحد موظفي ماكس برو هنا — عادة خلال أقل من 10 دقائق.`,
+          `You're now in the support queue (ref ${id}). A AqarPro agent will reply here — typical response under 10 minutes.`,
+          `أنت الآن في قائمة الدعم (مرجع ${id}). سيرد عليك أحد موظفي عقار برو هنا — عادة خلال أقل من 10 دقائق.`,
         ),
       },
     ]);
@@ -130,6 +135,7 @@ export function AssistantWidget() {
       if (!res.ok) throw new Error(t("The assistant is unavailable right now.", "المساعد غير متاح حالياً."));
       const data = (await res.json()) as AssistantResult;
       setEngine(data.engine);
+      update((s) => addAiUsage(s, "org-aqarpro", "assistant", data.engine === "claude" ? 2 : 1, `web chat · ${data.toolCalls.length} tool calls`));
       const bot: WMsg = {
         id: uid("w"),
         role: "bot",
@@ -160,38 +166,40 @@ export function AssistantWidget() {
   function submitLead(msgId: string, listingIds: string[]) {
     const l = listingById(listingIds[0]);
     if (!l || !leadForm.name || !leadForm.phone || !leadForm.consent) return;
-    const userTurns = msgs.filter((m) => m.role === "user").length;
-    // Simple lead-quality heuristic (WP-SUP-05): engagement + reachable phone + breadth of interest.
-    const score = Math.min(97, 50 + userTurns * 8 + (leadForm.phone.replace(/\D/g, "").length >= 8 ? 12 : 0) + (listingIds.length > 1 ? 5 : 0));
+    const userTurns = msgs.filter((m) => m.role === "user");
     const now = new Date().toISOString();
-    const lead: Lead = {
-      id: uid("L"),
+    const adv = advertiserById(l.advertiserId);
+    const input = {
       listingId: l.id,
       advertiserId: l.advertiserId,
       name: leadForm.name,
       phone: leadForm.phone,
-      channel: "ai",
-      message: `AI assistant shortlist: ${listingIds.join(", ")}. ${msgs
-        .filter((m) => m.role === "user")
+      channel: "ai" as const,
+      message: `AI assistant shortlist: ${listingIds.join(", ")}. ${userTurns
         .map((m) => m.text)
         .join(" / ")
         .slice(0, 200)}`,
-      createdAt: now,
-      status: "new",
-      score,
       source: "AI assistant (web)",
+      signals: { turns: userTurns.length, listings: listingIds.length, budgetStated: userTurns.some((m) => /\d/.test(m.text)) },
+      actor: "AI Support Agent",
     };
-    const adv = advertiserById(l.advertiserId);
-    update((s) => ({
-      ...s,
-      leads: [lead, ...s.leads],
-      consents: [{ id: uid("CS"), subject: leadForm.phone, channel: "whatsapp", optedIn: true, at: now, via: "AI assistant lead form" }, ...s.consents],
-      notifications: [{ id: uid("N"), at: now, channel: "whatsapp", to: adv.phone, template: "new_lead_routed", status: "sent" }, ...s.notifications],
-      audit: [{ id: uid("A"), at: now, actor: "AI Support Agent", role: "ai", action: "lead.created", target: lead.id, detail: `listing=${l.id} score=${score}` }, ...s.audit],
-    }));
+    // Preview against the current snapshot for the confirmation message; the write below re-runs on fresh state.
+    const preview = createLead(state, input);
+    // One pipeline for every channel: duplicate check, assignment, scoring, routing (LED-01..03, WP-SUP-05).
+    update((s) => {
+      const next = addAiUsage(createLead(s, input).state, adv.orgId, "assistant", 3, `lead scoring for ${l.id}`);
+      return {
+        ...next,
+        consents: [{ id: uid("CS"), subject: leadForm.phone, channel: "whatsapp", optedIn: true, at: now, via: "AI assistant lead form" }, ...next.consents],
+      };
+    });
     track("Lead", { listing_id: l.id, source: "ai_assistant" });
     setMsgs((m) => m.map((x) => (x.id === msgId ? { ...x, lead: "done" } : x)));
-    toast(t(`Lead sent to ${adv.name.en}`, `تم إرسال طلبك إلى ${adv.name.ar}`));
+    toast(
+      preview.merged
+        ? t(`Added to your existing enquiry with ${adv.name.en}`, `أُضيف إلى طلبك السابق لدى ${adv.name.ar}`)
+        : t(`Lead sent to ${adv.name.en} (score ${preview.lead.score})`, `تم إرسال طلبك إلى ${adv.name.ar} (التقييم ${preview.lead.score})`),
+    );
   }
 
   const chips = [
@@ -206,11 +214,11 @@ export function AssistantWidget() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          aria-label={t("Ask MaxPro AI", "اسأل مساعد ماكس برو")}
+          aria-label={t("Ask AqarPro AI", "اسأل مساعد عقار برو")}
           className="fixed bottom-24 end-4 z-50 flex items-center gap-2 rounded-full bg-brand-600 p-3.5 text-sm font-semibold text-white shadow-xl ring-4 ring-brand-600/15 transition hover:bg-brand-700 lg:bottom-5 lg:end-5 lg:py-3 lg:pe-5 lg:ps-4"
         >
           <Sparkles className="h-5 w-5 text-accent-400" />
-          <span className="max-lg:hidden">{t("Ask MaxPro AI", "اسأل مساعد ماكس برو")}</span>
+          <span className="max-lg:hidden">{t("Ask AqarPro AI", "اسأل مساعد عقار برو")}</span>
         </button>
       )}
 
@@ -221,7 +229,7 @@ export function AssistantWidget() {
               <Bot className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold">{t("MaxPro Assistant", "مساعد ماكس برو")}</div>
+              <div className="text-sm font-semibold">{t("AqarPro Assistant", "مساعد عقار برو")}</div>
               <div className="truncate text-xs text-white/75">
                 {handedOver ? t("Human agent joining…", "موظف الدعم ينضم…") : t("Finds homes from live listings · العربية / English", "يبحث في الإعلانات المنشورة · العربية / English")}
               </div>

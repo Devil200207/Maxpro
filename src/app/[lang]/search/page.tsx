@@ -12,6 +12,7 @@ import { paramsFromQuery, queryFromParams, searchListings, type SearchQuery } fr
 import { uid, useStore } from "@/lib/store";
 import { track } from "@/lib/tracking";
 import { useLang } from "@/lib/useLang";
+import { StageBadge, useStage } from "@/lib/stage";
 import { ListingCard } from "@/components/ListingCard";
 import { SearchFilters } from "@/components/SearchFilters";
 import { toast } from "@/components/Toaster";
@@ -37,10 +38,12 @@ function SearchView() {
   const router = useRouter();
   const sp = useSearchParams();
   const { state, update, toggleCompare } = useStore();
+  // FR-WEB-06 favourites, compare and saved-search alerts are Stage 2.
+  const s2 = useStage().visible("S2");
 
   const query = useMemo(() => queryFromParams(new URLSearchParams(sp.toString())), [sp]);
   const view = sp.get("view") === "map" ? "map" : "list";
-  const favouritesOnly = sp.get("favourites") === "1";
+  const favouritesOnly = s2 && sp.get("favourites") === "1";
   const page = Math.max(1, Number(sp.get("page") ?? 1));
 
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -120,16 +123,20 @@ function SearchView() {
           {t("Map", "خريطة")}
         </button>
       </div>
-      <button onClick={() => setSaveOpen(true)} className={btn.secondary}>
-        <Bell className="h-4 w-4" />
-        {t("Save search & alert me", "احفظ البحث ونبهني")}
-      </button>
+      {s2 && (
+        <button onClick={() => setSaveOpen(true)} className={btn.secondary}>
+          <Bell className="h-4 w-4" />
+          {t("Save search & alert me", "احفظ البحث ونبهني")}
+          <StageBadge s="S2" />
+        </button>
+      )}
     </div>
   );
 
   const card = (l: (typeof results)[number]) => (
     <div key={l.id} className="flex flex-col">
       <ListingCard l={l} onHover={setHoverId} />
+      {s2 && (
       <label className="mt-1.5 flex cursor-pointer items-center gap-2 self-start px-1 text-xs text-stone-500">
         <input
           type="checkbox"
@@ -140,6 +147,7 @@ function SearchView() {
         />
         {t("Compare", "قارن")}
       </label>
+      )}
     </div>
   );
 
@@ -281,7 +289,7 @@ function SearchView() {
       )}
 
       {/* Compare tray */}
-      {compareListings.length > 0 && (
+      {s2 && compareListings.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white/95 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
             <GitCompare className="h-5 w-5 shrink-0 text-brand-600" />

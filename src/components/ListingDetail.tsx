@@ -42,7 +42,9 @@ import {
 } from "@/lib/data";
 import { compactQar, gregorian, hijri, km, num, qar } from "@/lib/format";
 import { similarListings } from "@/lib/search";
-import { uid, useListing, useStore } from "@/lib/store";
+import { uid, useListing, useStore, type ListingReport } from "@/lib/store";
+import { StageBadge, StageGate } from "@/lib/stage";
+import type { Bi } from "@/lib/i18n";
 import { track } from "@/lib/tracking";
 import { useLang } from "@/lib/useLang";
 import { ListingCard } from "./ListingCard";
@@ -236,6 +238,11 @@ function Detail({ l }: { l: Listing }) {
               className={cn(isSvg(current.src) ? "object-contain bg-white p-4" : "object-cover")}
             />
             <span className="absolute start-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white">{p(roomCatName[current.cat])}</span>
+            {current.enhanced && (
+              <span className="absolute end-3 top-3 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-amber-950" title="AIS-07">
+                {t("Virtually enhanced", "صورة محسّنة رقمياً")}
+              </span>
+            )}
             <span className="absolute bottom-3 end-3 flex items-center gap-1.5 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-stone-800 opacity-90 group-hover:opacity-100">
               <Expand className="h-3.5 w-3.5" />
               {idx + 1} / {photos.length}
@@ -309,10 +316,12 @@ function Detail({ l }: { l: Listing }) {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => toggleFavourite(l.id)} className={btn.secondary} aria-label={t("Save", "حفظ")}>
-                  <Heart className={cn("h-4 w-4", fav && "fill-brand-600 text-brand-600")} />
-                  <span className="hidden sm:inline">{fav ? t("Saved", "محفوظ") : t("Save", "حفظ")}</span>
-                </button>
+                <StageGate stage="S2" mode="hide">
+                  <button onClick={() => toggleFavourite(l.id)} className={btn.secondary} aria-label={t("Save", "حفظ")} title="S2 · FR-WEB-06">
+                    <Heart className={cn("h-4 w-4", fav && "fill-brand-600 text-brand-600")} />
+                    <span className="hidden sm:inline">{fav ? t("Saved", "محفوظ") : t("Save", "حفظ")}</span>
+                  </button>
+                </StageGate>
                 <button onClick={share} className={btn.secondary} aria-label={t("Share", "مشاركة")}>
                   <Share2 className="h-4 w-4" />
                   <span className="hidden sm:inline">{t("Share", "مشاركة")}</span>
@@ -446,6 +455,8 @@ function Detail({ l }: { l: Listing }) {
               {t(`${otherCount} more listings`, `${otherCount} إعلانات أخرى`)}
             </Link>
           </Card>
+
+          <ListingHistory l={l} />
         </div>
 
         {/* Contact box */}
@@ -461,14 +472,17 @@ function Detail({ l }: { l: Listing }) {
                   <MessageCircle className="h-4 w-4" />
                   {t("Chat on WhatsApp", "تحدث عبر واتساب")}
                 </Link>
-                <Link
-                  href={href(`/whatsapp?listing=${l.id}&pack=1`)}
-                  onClick={waClick}
-                  className={cn(btn.secondary, "w-full border-wa-500/50 text-wa-700 hover:bg-wa-500/5")}
-                >
-                  <Package className="h-4 w-4" />
-                  {t("Send property pack to my WhatsApp", "أرسل ملف العقار إلى واتساب")}
-                </Link>
+                <StageGate stage="S2" mode="hide">
+                  <Link
+                    href={href(`/whatsapp?listing=${l.id}&pack=1`)}
+                    onClick={waClick}
+                    className={cn(btn.secondary, "w-full border-wa-500/50 text-wa-700 hover:bg-wa-500/5")}
+                  >
+                    <Package className="h-4 w-4" />
+                    {t("Send property pack to my WhatsApp", "أرسل ملف العقار إلى واتساب")}
+                    <StageBadge s="S2" />
+                  </Link>
+                </StageGate>
                 <button
                   onClick={() => {
                     setShowPhone(true);
@@ -543,7 +557,21 @@ function Detail({ l }: { l: Listing }) {
         <ReportModal
           onClose={() => setReportOpen(false)}
           onSubmit={(reason, note) => {
-            audit({ actor: "Visitor report", role: "system", action: "listing.reported", target: l.id, detail: `${reason}${note ? `: ${note}` : ""}` });
+            const report: ListingReport = {
+              id: uid("R"),
+              listingId: l.id,
+              reason: REPORT_REASONS[reason] ?? { en: reason, ar: reason },
+              note: note || undefined,
+              reporter: t("Visitor (web)", "زائر (الموقع)"),
+              at: new Date().toISOString(),
+              status: "open",
+            };
+            update((s) => ({
+              ...s,
+              reports: [report, ...s.reports],
+              notifications: [{ id: uid("N"), at: report.at, channel: "inapp", to: "Moderators", template: "listing_reported", status: "sent" }, ...s.notifications],
+            }));
+            audit({ actor: "Visitor report", role: "system", action: "listing.reported", target: l.id, detail: `${report.id}; ${reason}${note ? `: ${note}` : ""}` });
             setReportOpen(false);
             toast(t("Thanks — our moderators will review this listing", "شكراً — سيراجع المشرفون هذا الإعلان"));
           }}
@@ -695,16 +723,81 @@ function EnquiryForm({ l }: { l: Listing }) {
   );
 }
 
+const REPORT_REASONS: Record<string, Bi> = {
+  not_available: { en: "Property no longer available", ar: "العقار لم يعد متاحاً" },
+  wrong_price: { en: "Wrong price or details", ar: "سعر أو تفاصيل خاطئة" },
+  fake_photos: { en: "Photos don't match the property", ar: "الصور لا تطابق العقار" },
+  duplicate: { en: "Duplicate listing", ar: "إعلان مكرر" },
+  fraud: { en: "Suspected scam", ar: "اشتباه احتيال" },
+  discrimination: { en: "Discriminatory content", ar: "محتوى تمييزي" },
+};
+
+/** FR-LST-11: public price history; full change history for the owning advertiser. */
+function ListingHistory({ l }: { l: Listing }) {
+  const { lang, t } = useLang();
+  const { state } = useStore();
+  const owner = state.session.advertiserId === l.advertiserId;
+  const changes = state.changeLog.filter((c) => c.listingId === l.id);
+  const prices = l.priceHistory ?? [];
+  if (prices.length < 2 && !(owner && changes.length)) return null;
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-bold text-stone-900">{owner ? t("Listing history (advertiser view)", "سجل الإعلان (عرض المعلن)") : t("Price history", "سجل الأسعار")}</h2>
+        <StageBadge s="S1" />
+        <ReqTag id="FR-LST-11" />
+      </div>
+      {prices.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-2 text-sm">
+          {prices.map((ph, i) => {
+            const prev = prices[i - 1];
+            const delta = prev ? ph.price - prev.price : 0;
+            return (
+              <li key={ph.at + i} className="rounded-xl border border-stone-200 px-3 py-2">
+                <div className="font-semibold text-stone-900">{qar(ph.price, lang)}</div>
+                <div className="text-xs text-stone-500">
+                  {gregorian(ph.at, lang)}
+                  {delta !== 0 && <span className={delta < 0 ? "ms-1 text-emerald-600" : "ms-1 text-red-600"}>{delta < 0 ? "▼" : "▲"} {qar(Math.abs(delta), lang)}</span>}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {owner && changes.length > 0 && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[480px] text-xs">
+            <thead className="text-stone-500">
+              <tr>
+                <th className="py-1.5 text-start font-medium">{t("When", "متى")}</th>
+                <th className="py-1.5 text-start font-medium">{t("Who", "من")}</th>
+                <th className="py-1.5 text-start font-medium">{t("Field", "الحقل")}</th>
+                <th className="py-1.5 text-start font-medium">{t("Change", "التغيير")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {changes.map((c) => (
+                <tr key={c.id}>
+                  <td className="py-1.5 text-stone-500">{gregorian(c.at, lang)}</td>
+                  <td className="py-1.5 text-stone-700">{c.actor}</td>
+                  <td className="py-1.5 font-mono text-stone-600">{c.field}</td>
+                  <td className="py-1.5 text-stone-700">
+                    {c.from !== undefined && <span className="text-stone-400 line-through">{c.from}</span>} {c.to !== undefined && <>→ {c.to}</>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function ReportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (reason: string, note: string) => void }) {
   const { t } = useLang();
-  const reasons = [
-    ["not_available", t("Property no longer available", "العقار لم يعد متاحاً")],
-    ["wrong_price", t("Wrong price or details", "سعر أو تفاصيل خاطئة")],
-    ["fake_photos", t("Photos don't match the property", "الصور لا تطابق العقار")],
-    ["duplicate", t("Duplicate listing", "إعلان مكرر")],
-    ["fraud", t("Suspected scam", "اشتباه احتيال")],
-    ["discrimination", t("Discriminatory content", "محتوى تمييزي")],
-  ];
+  const { p } = useLang();
+  const reasons = Object.entries(REPORT_REASONS).map(([id, b]) => [id, p(b)] as const);
   const [reason, setReason] = useState(reasons[0][0]);
   const [note, setNote] = useState("");
   return (

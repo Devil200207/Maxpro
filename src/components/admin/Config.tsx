@@ -10,6 +10,7 @@ import { useLang } from "@/lib/useLang";
 import { toast } from "@/components/Toaster";
 import { Badge, btn, Card, cn, input } from "@/components/ui";
 import { SectionHead } from "./shared";
+import { StageBadge } from "@/lib/stage";
 
 const ADMIN = "Admin";
 
@@ -23,6 +24,8 @@ const quotaRows: { key: QuotaKey; en: string; ar: string }[] = [
   { key: "featuredCredits", en: "Featured credits / month", ar: "أرصدة التمييز شهرياً" },
   { key: "seats", en: "Team seats", ar: "مقاعد الفريق" },
   { key: "bumpsPerMonth", en: "Bumps / month", ar: "مرات التحديث شهرياً" },
+  { key: "aiCredits", en: "AI credits / month", ar: "أرصدة الذكاء الاصطناعي شهرياً" },
+  { key: "portals", en: "Portal connections", ar: "ربط البوابات" },
 ];
 
 function diffPlans(a: Plan[], b: Plan[]) {
@@ -66,7 +69,7 @@ export function PlansEditor() {
         name: { en: `New plan ${n}`, ar: `باقة جديدة ${n}` },
         tagline: { en: "", ar: "" },
         monthly: 999,
-        quotas: { listings: 50, featuredCredits: 10, seats: 3, bumpsPerMonth: 50 },
+        quotas: { listings: 50, featuredCredits: 10, seats: 3, bumpsPerMonth: 50, aiCredits: 500, portals: 2 },
         features: Object.fromEntries(Object.keys(planFeatureNames).map((k) => [k, false])),
       },
     ]);
@@ -81,6 +84,7 @@ export function PlansEditor() {
           "لا توجد باقة مثبتة في الكود — الأسعار والحصص والمقاعد ومفاتيح الميزات بيانات. تُضاف أنواع باقات جديدة أو صلاحيات وحدات ERP مستقبلاً من هنا.",
         )}
         req={["FR-BIL-01", "WP-ERX-03", "FR-ADM-02"]}
+        stage="S1"
         actions={
           <>
             <button onClick={addPlan} className={cn(btn.secondary, "py-1.5 text-xs")}>
@@ -288,6 +292,7 @@ export function AdInventory() {
         title={t("On-site ad inventory", "المساحات الإعلانية في الموقع")}
         desc={t("Banner slots, featured carousels and sponsored search positions with scheduling, targeting and impression/click tracking.", "بانرات وشرائط مميزة ومواضع ممولة في البحث مع الجدولة والاستهداف وتتبع الظهور والنقرات.")}
         req={["FR-ADV-01"]}
+        stage="S1"
         actions={
           <button onClick={() => setAdding((v) => !v)} className={cn(btn.primary, "py-1.5 text-xs")}>
             <Plus className="h-3.5 w-3.5" />
@@ -432,16 +437,20 @@ interface FlagDef {
   on: boolean;
   rollout: number;
   locked?: boolean;
+  stage: "S1" | "S2" | "later";
 }
 
 const seedFlags: FlagDef[] = [
-  { id: "wa_property_packs", name: { en: "WhatsApp property packs", ar: "ملفات العقار عبر واتساب" }, desc: { en: "Summary + categorised media sent on request (FR-WAP-03).", ar: "ملخص وصور مصنفة عند الطلب." }, on: true, rollout: 100 },
-  { id: "ai_assistant", name: { en: "AI assistant (web + WhatsApp)", ar: "المساعد الذكي (الموقع وواتساب)" }, desc: { en: "Guided discovery grounded in live listings (WP-SUP-01..07).", ar: "بحث موجّه من الإعلانات المنشورة فقط." }, on: true, rollout: 50 },
-  { id: "marketing_agent", name: { en: "Marketing agent", ar: "الوكيل التسويقي" }, desc: { en: "Campaign drafting with approval gate (WP-MKT-01..07).", ar: "صياغة الحملات مع بوابة موافقة." }, on: true, rollout: 25 },
-  { id: "meta_catalogue", name: { en: "Meta catalogue sync", ar: "مزامنة كتالوج ميتا" }, desc: { en: "Live listings feed for dynamic ads (FR-ADV-03).", ar: "تغذية الإعلانات الديناميكية." }, on: false, rollout: 0 },
-  { id: "bulk_upload", name: { en: "Bulk upload (CSV / Excel / feed)", ar: "الرفع الجماعي" }, desc: { en: "Agency inventory import (FR-LST-08).", ar: "استيراد مخزون الوكالات." }, on: true, rollout: 100 },
-  { id: "services_directory", name: { en: "Services directory", ar: "دليل الخدمات" }, desc: { en: "New vertical via listing-type engine (WP-ERX-04).", ar: "قطاع جديد عبر محرك أنواع الإعلانات." }, on: false, rollout: 0 },
-  { id: "erp_connector", name: { en: "ERP connector", ar: "موصل ERP" }, desc: { en: "Event subscriber for Odoo / ERPNext — out of scope for this engagement.", ar: "خارج نطاق هذه المرحلة." }, on: false, rollout: 0, locked: true },
+  { id: "portal_hub", name: { en: "Portal Integration Hub", ar: "مركز ربط البوابات" }, desc: { en: "Publish to external portals via connectors (HUB-01..13).", ar: "النشر على البوابات الخارجية عبر الموصلات." }, on: true, rollout: 100, stage: "S1" },
+  { id: "ai_listing_studio", name: { en: "AI Listing Studio", ar: "استوديو الإعلانات الذكي" }, desc: { en: "AI intake and bilingual drafts with quality checks (AIS-01..07).", ar: "إدخال ذكي ومسودات ثنائية اللغة مع فحص الجودة." }, on: true, rollout: 100, stage: "S1" },
+  { id: "live_portal_connector", name: { en: "First live portal connector", ar: "أول موصل بوابة حي" }, desc: { en: "Enabled once portal access is authorised (HUB-12, D-09).", ar: "يُفعّل بعد تفويض الوصول للبوابة." }, on: false, rollout: 0, stage: "S2" },
+  { id: "wa_property_packs", name: { en: "WhatsApp property packs", ar: "ملفات العقار عبر واتساب" }, desc: { en: "Summary + categorised media sent on request (FR-WAP-03).", ar: "ملخص وصور مصنفة عند الطلب." }, on: true, rollout: 100, stage: "S2" },
+  { id: "ai_assistant", name: { en: "AI assistant (web + WhatsApp)", ar: "المساعد الذكي (الموقع وواتساب)" }, desc: { en: "Guided discovery grounded in live listings (WP-SUP-01..07).", ar: "بحث موجّه من الإعلانات المنشورة فقط." }, on: true, rollout: 50, stage: "S2" },
+  { id: "marketing_agent", name: { en: "Marketing agent", ar: "الوكيل التسويقي" }, desc: { en: "Campaign drafting with approval gate (WP-MKT-01..07).", ar: "صياغة الحملات مع بوابة موافقة." }, on: true, rollout: 25, stage: "S2" },
+  { id: "meta_catalogue", name: { en: "Meta catalogue sync", ar: "مزامنة كتالوج ميتا" }, desc: { en: "Live listings feed for dynamic ads (FR-ADV-03).", ar: "تغذية الإعلانات الديناميكية." }, on: false, rollout: 0, stage: "S2" },
+  { id: "bulk_upload", name: { en: "Bulk upload (CSV / Excel / feed)", ar: "الرفع الجماعي" }, desc: { en: "Agency inventory import (FR-LST-08).", ar: "استيراد مخزون الوكالات." }, on: true, rollout: 100, stage: "S2" },
+  { id: "services_directory", name: { en: "Services directory", ar: "دليل الخدمات" }, desc: { en: "New vertical via listing-type engine (WP-ERX-04).", ar: "قطاع جديد عبر محرك أنواع الإعلانات." }, on: false, rollout: 0, stage: "S1" },
+  { id: "erp_connector", name: { en: "ERP connector", ar: "موصل ERP" }, desc: { en: "Event subscriber for Odoo / ERPNext — out of scope for this engagement.", ar: "خارج نطاق هذه المرحلة." }, on: false, rollout: 0, locked: true, stage: "later" },
 ];
 
 export function FeatureFlags() {
@@ -460,6 +469,7 @@ export function FeatureFlags() {
         title={t("Feature flags", "مفاتيح الميزات")}
         desc={t("Staged rollout of modules by percentage of users, so new capability ships safely after launch.", "إطلاق تدريجي للوحدات بنسبة من المستخدمين لضمان إطلاق آمن.")}
         req={["FR-ADM-07"]}
+        stage="S1"
       />
       <Card className="divide-y divide-stone-100">
         {flags.map((f) => (
@@ -469,11 +479,13 @@ export function FeatureFlags() {
               <div className="flex items-center gap-2 text-sm font-semibold text-stone-900">
                 {p(f.name)}
                 <span className="font-mono text-[10px] font-normal text-stone-400">{f.id}</span>
-                {f.locked && (
+                {f.stage === "later" ? (
                   <Badge>
                     <Lock className="h-3 w-3" />
-                    {t("Phase 2", "المرحلة 2")}
+                    {t("Future phase", "مرحلة لاحقة")}
                   </Badge>
+                ) : (
+                  <StageBadge s={f.stage} />
                 )}
               </div>
               <div className="text-xs text-stone-500">{p(f.desc)}</div>

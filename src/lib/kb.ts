@@ -54,7 +54,7 @@ export const kb: KbArticle[] = [
     id: "kb-promote",
     title: { en: "Promoting a listing on Facebook and Instagram", ar: "ترويج إعلان على فيسبوك وإنستغرام" },
     body: {
-      en: "From your dashboard choose 'Promote on Meta'. Our marketing assistant drafts the audience, budget and Arabic/English ad copy. Nothing is published or charged until you approve. Ad spend and the MaxPro service fee are shown as separate lines.",
+      en: "From your dashboard choose 'Promote on Meta'. Our marketing assistant drafts the audience, budget and Arabic/English ad copy. Nothing is published or charged until you approve. Ad spend and the AqarPro service fee are shown as separate lines.",
       ar: "من لوحة التحكم اختر 'روّج على ميتا'. يقترح المساعد التسويقي الجمهور والميزانية ونص الإعلان بالعربية والإنجليزية. لا يتم النشر أو الخصم قبل موافقتك. تظهر تكلفة الإعلان ورسوم الخدمة كبندين منفصلين.",
     },
     url: "/advertiser",

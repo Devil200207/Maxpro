@@ -3,7 +3,7 @@ import { ListingDetail } from "@/components/ListingDetail";
 import { seedListings, typeName, zoneById, type Listing } from "@/lib/data";
 import { isLocale, type Locale } from "@/lib/i18n";
 
-const SITE = "https://maxpro.qa";
+const SITE = "https://aqarpro.qa";
 
 function find(id: string) {
   return seedListings.find((l) => l.id === id);

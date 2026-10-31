@@ -27,7 +27,9 @@ import { toast } from "@/components/Toaster";
 import { advertiserById, zoneById, type Listing } from "@/lib/data";
 import { compactQar, num, qar } from "@/lib/format";
 import type { Bi } from "@/lib/i18n";
-import { uid, useStore, type Campaign } from "@/lib/store";
+import { uid, useStore, type Campaign, type Invoice } from "@/lib/store";
+import { addAiUsage, createLead } from "@/lib/leads";
+import { StageBadge, StageGate } from "@/lib/stage";
 import { track } from "@/lib/tracking";
 import { useLang } from "@/lib/useLang";
 
@@ -131,7 +133,12 @@ export default function PromotePage() {
       </div>
     );
 
-  return <Promote key={listing.id} listing={listing} lang={lang} t={t} p={p} href={href} state={state} update={update} />;
+  // The whole Meta campaign flow (FR-ADV-04..09, WP-MKT-01..07) is Stage 2.
+  return (
+    <StageGate stage="S2" label={t("Meta campaigns & marketing agent — Stage 2", "حملات ميتا والوكيل التسويقي — المرحلة الثانية")} className="mx-auto my-16 max-w-xl">
+      <Promote key={listing.id} listing={listing} lang={lang} t={t} p={p} href={href} state={state} update={update} />
+    </StageGate>
+  );
 }
 
 function Promote({
@@ -169,11 +176,17 @@ function Promote({
     const seq: [number, Omit<ToolCall, "id" | "at">][] = [
       [400, { name: "listings.read", args: `{ id: "${l.id}" }`, result: `ok · ${l.media.length} media, ${l.purpose}, ${l.beds}BR, QAR ${l.price}`, scope: "read" }],
       [1100, { name: "meta.estimate_reach", args: `{ geo: ["Doha","Lusail","Al Rayyan"], age: [18,65], special_ad_category: "HOUSING" }`, result: "est. 180,000–240,000 accounts", scope: "read" }],
-      [1800, { name: "creative.render_template", args: `{ template: "maxpro-blue-v1", variants: ["feed_1x1","story_9x16"] }`, result: "2 creatives rendered (AR + EN)", scope: "read" }],
+      [1800, { name: "creative.render_template", args: `{ template: "aqarpro-blue-v1", variants: ["feed_1x1","story_9x16"] }`, result: "2 creatives rendered (AR + EN)", scope: "read" }],
       [2400, { name: "meta.policy_check", args: `{ special_ad_category: "HOUSING", targeting: {...} }`, result: "passed · no prohibited targeting", scope: "check" }],
     ];
     const timers = seq.map(([ms, c]) => setTimeout(() => pushLog(c), ms));
-    timers.push(setTimeout(() => setThinking(false), 2700));
+    timers.push(
+      setTimeout(() => {
+        setThinking(false);
+        // Drafting consumes the session organisation's AI credits (AIS-05 / BIL-09).
+        update((s) => addAiUsage(s, advertiserById(s.session.advertiserId).orgId, "marketing", 15, `campaign draft for ${l.id}`));
+      }, 2700),
+    );
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -222,9 +235,9 @@ function Promote({
         ...s.audit,
       ],
     }));
-    pushLog({ name: "approval_gate.check", args: `{ campaign: "${cid}", approver: "${adv.name.en}" }`, result: "passed · awaiting MaxPro admin approval", scope: "check" });
+    pushLog({ name: "approval_gate.check", args: `{ campaign: "${cid}", approver: "${adv.name.en}" }`, result: "passed · awaiting AqarPro admin approval", scope: "check" });
     setSubmittedId(cid);
-    toast(t("Approved — sent to MaxPro for final review", "تم الاعتماد — أُرسلت لمراجعة ماكس برو النهائية"));
+    toast(t("Approved — sent to AqarPro for final review", "تم الاعتماد — أُرسلت لمراجعة عقار برو النهائية"));
   };
 
   const adminApprove = (cid: string) => {
@@ -234,7 +247,7 @@ function Promote({
       ...s,
       campaigns: s.campaigns.map((x) => (x.id === cid ? { ...x, status: "active", approvedAt: now, metrics: { spend: 0, reach: 0, clicks: 0, leads: 0 } } : x)),
       audit: [
-        { id: uid("A"), at: now, actor: "Admin", role: "admin", action: "campaign.approved_by_maxpro", target: cid },
+        { id: uid("A"), at: now, actor: "Admin", role: "admin", action: "campaign.approved_by_aqarpro", target: cid },
         { id: uid("A"), at: now, actor: "AI Marketing Agent", role: "ai", action: "tool.meta.create_campaign", target: cid, detail: "special_ad_categories=[HOUSING]" },
         ...s.audit,
       ],
@@ -249,6 +262,75 @@ function Promote({
     toast(t("Campaign live on Facebook & Instagram", "الحملة تعمل الآن على فيسبوك وإنستغرام"));
   };
 
+  /**
+   * C5 tail: Meta runs the ad, Lead Ads + Click-to-WhatsApp leads flow into the lead inbox
+   * (through the shared lead pipeline) and spend + service fee are billed as separate lines.
+   */
+  const simulateWeek = (cid: string) => {
+    const c = state.campaigns.find((x) => x.id === cid);
+    if (!c) return;
+    const now = new Date().toISOString();
+    const spendWeek = Math.min(c.dailyBudget * 7, c.dailyBudget * c.days);
+    const feeWeek = Math.round(spendWeek * FEE);
+    const people = [
+      { name: "Mariam Al-Sulaiti", phone: "+974 5521 4410", channel: "meta" as const, src: "Meta Lead Ad", msg: "Lead form — Budget stated · Move-in: next month · Prefers WhatsApp" },
+      { name: "Rahul Verma", phone: "+974 3390 2271", channel: "meta" as const, src: "Meta Lead Ad", msg: "Lead form — Family of 4 · Wants a viewing this weekend" },
+      { name: "Click-to-WhatsApp user", phone: "+974 6612 9083", channel: "whatsapp" as const, src: "Click-to-WhatsApp ad", msg: "First message: Is this still available? (ad referral attributed)" },
+    ];
+    const invNo = (s: typeof state) =>
+      `INV-2026-${String(Math.max(0, ...s.invoices.map((i) => Number(i.id.split("-").pop()) || 0)) + 1).padStart(6, "0")}`;
+    update((s) => {
+      let next = s;
+      for (const person of people) {
+        next = createLead(next, {
+          listingId: l.id,
+          advertiserId: l.advertiserId,
+          name: person.name,
+          phone: person.phone,
+          channel: person.channel,
+          message: person.msg,
+          source: `${person.src}: ${cid}`,
+          actor: "Meta webhook",
+        }).state;
+      }
+      const inv: Invoice = {
+        id: invNo(next),
+        at: now,
+        description: { en: `Managed Meta campaign ${cid} — week 1`, ar: `حملة ميتا المُدارة ${cid} — الأسبوع 1` },
+        amount: spendWeek + feeWeek,
+        status: "paid",
+        method: "card",
+        lines: [
+          { label: { en: "Meta ad spend (pass-through)", ar: "إنفاق إعلانات ميتا (تمرير)" }, amount: spendWeek },
+          { label: { en: "AqarPro managed-campaign service fee (20%)", ar: "رسوم خدمة الحملة المُدارة من عقار برو (20٪)" }, amount: feeWeek },
+        ],
+      };
+      return {
+        ...next,
+        campaigns: next.campaigns.map((x) =>
+          x.id === cid
+            ? {
+                ...x,
+                metrics: {
+                  spend: (x.metrics?.spend ?? 0) + spendWeek,
+                  reach: (x.metrics?.reach ?? 0) + spendWeek * 31,
+                  clicks: (x.metrics?.clicks ?? 0) + Math.round(spendWeek * 0.9),
+                  leads: (x.metrics?.leads ?? 0) + people.length,
+                },
+              }
+            : x,
+        ),
+        invoices: [inv, ...next.invoices],
+        notifications: [{ id: uid("N"), at: now, channel: "email", to: `billing@${adv.orgId.replace("org-", "")}.qa`, template: "campaign_invoice", status: "sent" }, ...next.notifications],
+        audit: [{ id: uid("A"), at: now, actor: "Billing", role: "system", action: "campaign.billed", target: inv.id, detail: `spend=${spendWeek} fee=${feeWeek} (separate lines)` }, ...next.audit],
+      };
+    });
+    pushLog({ name: "meta.insights.get", args: `{ campaign: "${cid}", date_preset: "last_7d" }`, result: `spend QAR ${spendWeek} · ${people.length} leads`, scope: "read" });
+    pushLog({ name: "meta.leadgen.fetch", args: `{ form: "lf_${cid.slice(-4)}" }`, result: "2 Lead Ads leads + 1 Click-to-WhatsApp referral → lead inbox", scope: "read" });
+    track("Lead", { source: "meta", campaign: cid });
+    toast(t(`3 new leads in your lead manager · invoice issued (spend + fee)`, `3 عملاء جدد في إدارة العملاء · صدرت فاتورة (إنفاق + رسوم)`));
+  };
+
   const copy = preview === "ar" ? d.copyAr : d.copyEn;
   const priceText = l.purpose === "rent" ? (preview === "ar" ? `${num(l.price, "ar")} ر.ق / شهرياً` : `QAR ${num(l.price, "en")} / month`) : compactQar(l.price, preview);
 
@@ -259,7 +341,12 @@ function Promote({
         {t("Back to listings", "العودة للإعلانات")}
       </Link>
       <PageTitle
-        title={t("Promote on Facebook & Instagram", "روّج على فيسبوك وإنستغرام")}
+        title={
+          <span className="inline-flex items-center gap-2">
+            {t("Promote on Facebook & Instagram", "روّج على فيسبوك وإنستغرام")}
+            <StageBadge s="S2" />
+          </span>
+        }
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-mono">{l.id}</span> · {p(l.title)}
@@ -301,7 +388,7 @@ function Promote({
                 <Bot className="h-5 w-5" />
               </span>
               <div className="flex-1">
-                <div className="font-semibold text-stone-900">{t("MaxPro Marketing Agent", "وكيل التسويق من ماكس برو")}</div>
+                <div className="font-semibold text-stone-900">{t("AqarPro Marketing Agent", "وكيل التسويق من عقار برو")}</div>
                 {thinking ? (
                   <div className="mt-1 flex items-center gap-2 text-sm text-stone-500">
                     <span className="flex gap-1">
@@ -347,7 +434,7 @@ function Promote({
                   <div className="flex items-center gap-2 p-3">
                     <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-600 text-[10px] font-bold text-white">MP</span>
                     <div>
-                      <div className="font-semibold text-stone-900">MaxPro Qatar</div>
+                      <div className="font-semibold text-stone-900">AqarPro Qatar</div>
                       <div className="text-[11px] text-stone-500">{preview === "ar" ? "ممول" : "Sponsored"} · <Globe2 className="inline h-3 w-3" /></div>
                     </div>
                     <span className="ms-auto rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-500">Facebook · Feed</span>
@@ -360,7 +447,7 @@ function Promote({
                         <div className="text-xs opacity-80">{preview === "ar" ? z.name.ar : z.name.en}</div>
                         <div className="text-lg font-bold">{priceText}</div>
                       </div>
-                      <span className="rounded bg-accent-400 px-1.5 py-0.5 text-[10px] font-extrabold text-brand-900">MaxPro</span>
+                      <span className="rounded bg-accent-400 px-1.5 py-0.5 text-[10px] font-extrabold text-brand-900">AqarPro</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between bg-stone-50 p-3">
@@ -377,7 +464,7 @@ function Promote({
                     <Image src={l.media[1]?.src ?? cover} alt="" fill sizes="260px" className="object-cover opacity-90" />
                     <div className="absolute inset-x-3 top-3 flex items-center gap-2 text-white">
                       <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-600 text-[9px] font-bold ring-2 ring-white">MP</span>
-                      <span className="text-xs font-semibold">maxpro.qa</span>
+                      <span className="text-xs font-semibold">aqarpro.qa</span>
                       <span className="text-[10px] opacity-80">{preview === "ar" ? "ممول" : "Sponsored"}</span>
                       <span className="ms-auto rounded bg-white/20 px-1.5 text-[9px]">IG · Story</span>
                     </div>
@@ -488,7 +575,7 @@ function Promote({
               </div>
               <div className="rounded-xl border border-stone-200">
                 <Row label={t("Ad spend (paid to Meta)", "تكلفة الإعلان (تُدفع لميتا)")} value={qar(spend, lang)} />
-                <Row label={t("MaxPro service fee (20%)", "رسوم خدمة ماكس برو (20٪)")} value={qar(fee, lang)} />
+                <Row label={t("AqarPro service fee (20%)", "رسوم خدمة عقار برو (20٪)")} value={qar(fee, lang)} />
                 <Row label={t("Total, billed as two separate lines", "الإجمالي، يُفوتر كبندين منفصلين")} value={qar(spend + fee, lang)} strong />
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -526,7 +613,7 @@ function Promote({
                     <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand-600" />
                     <span>
                       {t(
-                        `I approve this campaign and authorise up to ${qar(spend, "en")} ad spend plus a ${qar(fee, "en")} MaxPro service fee.`,
+                        `I approve this campaign and authorise up to ${qar(spend, "en")} ad spend plus a ${qar(fee, "en")} AqarPro service fee.`,
                         `أوافق على هذه الحملة وأفوّض إنفاقاً إعلانياً حتى ${qar(spend, "ar")} بالإضافة إلى رسوم خدمة ${qar(fee, "ar")}.`,
                       )}
                     </span>
@@ -534,8 +621,8 @@ function Promote({
                   <div className="flex items-start gap-2 text-xs text-stone-500">
                     <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     {t(
-                      "Enforced by the application, not the AI: the Meta API wrapper refuses to create, change or fund a campaign without a stored approval record from you (and MaxPro, where configured).",
-                      "يُفرض من التطبيق وليس من الذكاء الاصطناعي: ترفض واجهة ميتا إنشاء أو تعديل أو تمويل أي حملة دون سجل موافقة محفوظ منك (ومن ماكس برو عند التفعيل).",
+                      "Enforced by the application, not the AI: the Meta API wrapper refuses to create, change or fund a campaign without a stored approval record from you (and AqarPro, where configured).",
+                      "يُفرض من التطبيق وليس من الذكاء الاصطناعي: ترفض واجهة ميتا إنشاء أو تعديل أو تمويل أي حملة دون سجل موافقة محفوظ منك (ومن عقار برو عند التفعيل).",
                     )}
                   </div>
                   <button onClick={approve} disabled={!agree || !policy.ok || overCap || overPlatform} className={cn(btn.primary, "w-full")}>
@@ -605,6 +692,7 @@ function Promote({
             <h3 className="mb-3 flex items-center gap-2 font-semibold text-stone-900">
               <Gauge className="h-4 w-4 text-brand-600" />
               {t("Campaigns for this listing", "حملات هذا الإعلان")}
+              <StageBadge s="S2" />
             </h3>
             {campaigns.length === 0 ? (
               <p className="text-sm text-stone-400">{t("No campaigns yet.", "لا توجد حملات بعد.")}</p>
@@ -624,10 +712,20 @@ function Promote({
                         <Metric label={t("Leads", "العملاء")} value={num(c.metrics.leads, lang)} />
                         <Metric label="CPL" value={c.metrics.leads ? qar(Math.round((c.metrics.spend / c.metrics.leads) * 10) / 10, lang) : "—"} />
                         <Metric label={t("Fee", "الرسوم")} value={qar(c.serviceFee, lang)} />
+                        {c.status === "active" && (
+                          <div className="col-span-3 mt-1 flex flex-wrap items-center justify-between gap-2">
+                            <button onClick={() => simulateWeek(c.id)} className="font-semibold text-brand-600 hover:underline">
+                              {t("Simulate 7 days on Meta", "محاكاة 7 أيام على ميتا")}
+                            </button>
+                            <Link href={href("/advertiser/leads")} className="text-stone-500 hover:text-brand-600">
+                              {t("Lead manager →", "إدارة العملاء ←")}
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="mt-2 flex items-center justify-between gap-2 text-xs text-stone-500">
-                        {t("Awaiting MaxPro approval", "بانتظار موافقة ماكس برو")}
+                        {t("Awaiting AqarPro approval", "بانتظار موافقة عقار برو")}
                         <button onClick={() => adminApprove(c.id)} className="font-semibold text-brand-600 hover:underline">
                           {t("Simulate admin approval", "محاكاة موافقة الإدارة")}
                         </button>
@@ -701,7 +799,7 @@ function SubmittedPanel({
     { label: t("AI draft", "مسودة الذكاء الاصطناعي"), done: true },
     { label: t("Policy check", "فحص السياسات"), done: true },
     { label: t("Your approval", "موافقتك"), done: true },
-    { label: t("MaxPro approval", "موافقة ماكس برو"), done: active },
+    { label: t("AqarPro approval", "موافقة عقار برو"), done: active },
     { label: t("Live on Meta", "تعمل على ميتا"), done: active },
   ];
   return (
@@ -709,7 +807,7 @@ function SubmittedPanel({
       <div className="flex items-center gap-2">
         <CheckCircle2 className={cn("h-5 w-5", active ? "text-emerald-600" : "text-amber-500")} />
         <h3 className="font-semibold text-stone-900">
-          {active ? t("Campaign is live", "الحملة تعمل الآن") : t("Waiting for MaxPro approval", "بانتظار موافقة ماكس برو")}
+          {active ? t("Campaign is live", "الحملة تعمل الآن") : t("Waiting for AqarPro approval", "بانتظار موافقة عقار برو")}
         </h3>
         <span className="ms-auto font-mono text-xs text-stone-500">{cid}</span>
       </div>
@@ -724,7 +822,7 @@ function SubmittedPanel({
       {!active && (
         <button onClick={() => onAdmin(cid)} className={cn(btn.secondary, "mt-4")}>
           <ShieldCheck className="h-4 w-4" />
-          {t("Simulate MaxPro admin approval", "محاكاة موافقة إدارة ماكس برو")}
+          {t("Simulate AqarPro admin approval", "محاكاة موافقة إدارة عقار برو")}
         </button>
       )}
     </div>

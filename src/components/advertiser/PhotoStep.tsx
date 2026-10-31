@@ -58,7 +58,7 @@ function drawWatermark(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.shadowColor = "rgba(0,0,0,0.45)";
   ctx.shadowBlur = 6;
   ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.fillText("MaxPro.qa", w - size * 0.8, h - size * 0.6);
+  ctx.fillText("AqarPro.qa", w - size * 0.8, h - size * 0.6);
 }
 
 const samples: Record<RoomCat, string[]> = {

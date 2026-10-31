@@ -174,7 +174,7 @@ export const toolDefs = [
   {
     name: "search_listings",
     description:
-      "Search LIVE MaxPro property listings in Qatar. Returns up to 3 ranked matches, each with a listing id and a reason. Use for any property recommendation. Zones are ids such as 'pearl', 'lusail', 'westbay'. Prices are QAR (monthly for rent).",
+      "Search LIVE AqarPro property listings in Qatar. Returns up to 3 ranked matches, each with a listing id and a reason. Use for any property recommendation. Zones are ids such as 'pearl', 'lusail', 'westbay'. Prices are QAR (monthly for rent).",
     strict: true,
     input_schema: {
       type: "object" as const,
@@ -196,7 +196,7 @@ export const toolDefs = [
   },
   {
     name: "get_listing",
-    description: "Get full facts for one LIVE listing by id (e.g. MP-10231). Use before answering detailed questions about a property.",
+    description: "Get full facts for one LIVE listing by id (e.g. AQ-10231). Use before answering detailed questions about a property.",
     strict: true,
     input_schema: {
       type: "object" as const,
@@ -218,7 +218,7 @@ export const toolDefs = [
   },
   {
     name: "platform_info",
-    description: "Answer questions about MaxPro itself (plans, prices, how to list, verification, WhatsApp opt-out, promoting listings) from the managed knowledge base. Always cite the returned source_url.",
+    description: "Answer questions about AqarPro itself (plans, prices, how to list, verification, WhatsApp opt-out, promoting listings) from the managed knowledge base. Always cite the returned source_url.",
     strict: true,
     input_schema: {
       type: "object" as const,
@@ -245,7 +245,7 @@ export const toolDefs = [
   },
   {
     name: "handover_to_human",
-    description: "Hand the conversation to a human MaxPro support agent. Use when the user asks for a person, when you are not confident, for negotiation or viewing bookings, or for legal, financial, visa or other sensitive topics.",
+    description: "Hand the conversation to a human AqarPro support agent. Use when the user asks for a person, when you are not confident, for negotiation or viewing bookings, or for legal, financial, visa or other sensitive topics.",
     strict: true,
     input_schema: {
       type: "object" as const,
@@ -312,7 +312,7 @@ export function runTool(name: string, rawInput: object, ctx: ToolContext): unkno
  * not a LIVE listing is stripped before the reply reaches the user.
  */
 export function validateReply(reply: string): { reply: string; listings: string[]; removed: string[] } {
-  const ids = [...new Set(reply.match(/MP-\d{5}/g) ?? [])];
+  const ids = [...new Set(reply.match(/AQ-\d{5}/g) ?? [])];
   const removed = ids.filter((id) => !isLiveId(id));
   let clean = reply;
   for (const id of removed) clean = clean.replaceAll(id, "[unverified listing removed]");

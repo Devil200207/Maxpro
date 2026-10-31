@@ -21,6 +21,8 @@ export type Source = "manual" | "bulk" | "api" | "erp";
 export interface Media {
   src: string;
   cat: RoomCat;
+  /** AIS-07: photo was enhanced or virtually staged — must be disclosed to viewers. */
+  enhanced?: boolean;
 }
 
 export interface Listing {
@@ -63,6 +65,13 @@ export interface Listing {
   expiresAt: string;
   source: Source;
   stats: { views: number; saves: number; enquiries: number; waClicks: number };
+  // FR-LST-02 / FR-LST-11 additions
+  project?: Bi; // building / project the unit belongs to
+  assignedAgentId?: string; // TeamMember id
+  availableFrom?: string;
+  priceHistory?: { at: string; price: number }[];
+  /** Which fields were AI-suggested and not yet confirmed by a person (AIS-06). */
+  aiSuggestedFields?: string[];
 }
 
 export interface Zone {
@@ -92,7 +101,7 @@ export interface Plan {
   tagline: Bi;
   monthly: number; // QAR; 0 = free, -1 = custom quote
   // WP-ERX-03: quotas, seats and entitlements live in data, never hard-coded
-  quotas: { listings: number; featuredCredits: number; seats: number; bumpsPerMonth: number };
+  quotas: { listings: number; featuredCredits: number; seats: number; bumpsPerMonth: number; aiCredits: number; portals: number };
   features: Record<string, boolean>;
   highlight?: boolean;
 }
@@ -195,7 +204,28 @@ export const advertisers: Advertiser[] = [
   { id: "adv-gulfkey", orgId: "org-gulfkey", kind: "agency", name: { en: "Gulf Key Realty", ar: "جلف كي العقارية" }, initials: "GK", color: "#0369a1", phone: "+974 4410 5050", verified: false, licence: "RE-2026-2210", planId: "professional", memberSince: "2026-10-18" },
 ];
 
-export const advertiserById = (id: string) => advertisers.find((a) => a.id === id)!;
+/**
+ * Advertisers registered at runtime (sign-ups, verification changes) live in the demo store.
+ * The store pushes its list here so plain helpers like advertiserById stay synchronous.
+ */
+let runtimeAdvertisers: Advertiser[] | null = null;
+export function setRuntimeAdvertisers(list: Advertiser[]) {
+  runtimeAdvertisers = list;
+}
+export const advertiserById = (id: string): Advertiser =>
+  (runtimeAdvertisers ?? advertisers).find((a) => a.id === id) ??
+  advertisers.find((a) => a.id === id) ?? {
+    id,
+    orgId: `org-${id}`,
+    kind: "individual",
+    name: { en: "Unknown advertiser", ar: "معلن غير معروف" },
+    initials: "?",
+    color: "#64748b",
+    phone: "",
+    verified: false,
+    planId: "starter",
+    memberSince: "2026-01-01",
+  };
 
 /** The advertiser the demo "logs in" as in the advertiser portal. */
 export const DEMO_ADVERTISER_ID = "adv-pearlgate";
@@ -206,7 +236,7 @@ export const plans: Plan[] = [
     name: { en: "Starter", ar: "المبتدئ" },
     tagline: { en: "For owners listing one or two properties", ar: "للملاك الذين يعرضون عقاراً أو اثنين" },
     monthly: 0,
-    quotas: { listings: 2, featuredCredits: 0, seats: 1, bumpsPerMonth: 0 },
+    quotas: { listings: 2, featuredCredits: 0, seats: 1, bumpsPerMonth: 0, aiCredits: 20, portals: 0 },
     features: { whatsappLeads: true, analytics: false, verifiedBadge: true, bulkUpload: false, metaCampaigns: false, aiAssistant: true, brandedPage: false, apiAccess: false },
   },
   {
@@ -214,7 +244,7 @@ export const plans: Plan[] = [
     name: { en: "Professional", ar: "الاحترافي" },
     tagline: { en: "For brokers and active landlords", ar: "للوسطاء والملاك النشطين" },
     monthly: 499,
-    quotas: { listings: 25, featuredCredits: 5, seats: 1, bumpsPerMonth: 20 },
+    quotas: { listings: 25, featuredCredits: 5, seats: 1, bumpsPerMonth: 20, aiCredits: 300, portals: 1 },
     features: { whatsappLeads: true, analytics: true, verifiedBadge: true, bulkUpload: false, metaCampaigns: true, aiAssistant: true, brandedPage: false, apiAccess: false },
   },
   {
@@ -222,7 +252,7 @@ export const plans: Plan[] = [
     name: { en: "Agency", ar: "الوكالة" },
     tagline: { en: "Teams, shared inventory and a branded page", ar: "فرق عمل ومخزون مشترك وصفحة باسم الوكالة" },
     monthly: 1999,
-    quotas: { listings: 150, featuredCredits: 30, seats: 10, bumpsPerMonth: 150 },
+    quotas: { listings: 150, featuredCredits: 30, seats: 10, bumpsPerMonth: 150, aiCredits: 2000, portals: 3 },
     features: { whatsappLeads: true, analytics: true, verifiedBadge: true, bulkUpload: true, metaCampaigns: true, aiAssistant: true, brandedPage: true, apiAccess: false },
     highlight: true,
   },
@@ -231,7 +261,7 @@ export const plans: Plan[] = [
     name: { en: "Enterprise", ar: "المؤسسات" },
     tagline: { en: "Developers and large portfolios, API and ERP feeds", ar: "للمطورين والمحافظ الكبيرة مع ربط API و ERP" },
     monthly: -1,
-    quotas: { listings: 1000, featuredCredits: 100, seats: 50, bumpsPerMonth: 1000 },
+    quotas: { listings: 1000, featuredCredits: 100, seats: 50, bumpsPerMonth: 1000, aiCredits: 10000, portals: 10 },
     features: { whatsappLeads: true, analytics: true, verifiedBadge: true, bulkUpload: true, metaCampaigns: true, aiAssistant: true, brandedPage: true, apiAccess: true },
   },
 ];
@@ -327,32 +357,32 @@ interface Seed {
 }
 
 const seeds: Seed[] = [
-  { id: "MP-10231", adv: "adv-pearlgate", purpose: "rent", type: "apartment", zone: "pearl", beds: 2, baths: 3, area: 135, price: 12500, furnishing: "furnished", title: { en: "Sea-view 2BR in Porto Arabia, fully furnished", ar: "شقة غرفتين بإطلالة بحرية في بورتو أرابيا، مفروشة بالكامل" }, amenities: ["pool", "gym", "beach", "security", "concierge", "central_ac"], view: { en: "Full sea view", ar: "إطلالة بحرية كاملة" }, building: { en: "Porto Arabia Tower 12", ar: "برج بورتو أرابيا 12" }, promotion: "premium", floor: 14, daysAgo: 2, utilities: true, extra: { en: "Wraparound balcony overlooking the marina and yachts.", ar: "شرفة واسعة تطل على المارينا واليخوت." } },
-  { id: "MP-10232", adv: "adv-lusailhomes", purpose: "rent", type: "apartment", zone: "lusail", beds: 1, baths: 2, area: 85, price: 7200, furnishing: "semi", title: { en: "Modern 1BR at Lusail Marina, near tram", ar: "شقة غرفة نوم حديثة في مارينا لوسيل قرب الترام" }, amenities: ["pool", "gym", "metro", "elevator", "central_ac"], view: { en: "Marina view", ar: "إطلالة على المارينا" }, floor: 9, daysAgo: 4 },
-  { id: "MP-10233", adv: "adv-pearlgate", purpose: "sale", type: "apartment", zone: "pearl", beds: 3, baths: 4, area: 210, price: 3450000, furnishing: "unfurnished", title: { en: "Freehold 3BR + maid in Viva Bahriya", ar: "شقة تملك حر 3 غرف + غرفة خادمة في فيفا بحرية" }, amenities: ["pool", "gym", "beach", "security", "kids", "central_ac"], view: { en: "Beach view", ar: "إطلالة على الشاطئ" }, building: { en: "Viva Bahriya Tower 21", ar: "فيفا بحرية برج 21" }, promotion: "featured", maid: true, floor: 7, daysAgo: 6 },
-  { id: "MP-10234", adv: "adv-dohaprime", purpose: "rent", type: "villa", zone: "alwaab", beds: 5, baths: 6, area: 450, price: 22000, furnishing: "unfurnished", title: { en: "Compound villa 5BR with shared pool, Al Waab", ar: "فيلا 5 غرف في كمباوند مع مسبح مشترك، الوعب" }, amenities: ["pool", "gym", "security", "kids", "garden", "covered_parking"], promotion: "featured", maid: true, pets: true, suitability: "family", daysAgo: 3, extra: { en: "Gated compound minutes from Villaggio and Aspire Park.", ar: "كمباوند مسور على بعد دقائق من فيلاجيو وحديقة أسباير." } },
-  { id: "MP-10235", adv: "adv-dohaprime", purpose: "rent", type: "apartment", zone: "westbay", beds: 2, baths: 2, area: 120, price: 10500, furnishing: "furnished", title: { en: "Furnished 2BR in West Bay tower, bills included", ar: "شقة غرفتين مفروشة في برج بالخليج الغربي شاملة الفواتير" }, amenities: ["pool", "gym", "metro", "security", "elevator", "central_ac"], view: { en: "City skyline view", ar: "إطلالة على أبراج المدينة" }, utilities: true, floor: 22, daysAgo: 1 },
-  { id: "MP-10236", adv: "adv-sara", purpose: "rent", type: "studio", zone: "alsadd", beds: 0, baths: 1, area: 45, price: 4300, furnishing: "furnished", title: { en: "Cosy furnished studio next to Al Sadd Metro", ar: "استوديو مفروش بجوار مترو السد" }, amenities: ["metro", "elevator", "central_ac", "security"], suitability: "bachelor", utilities: true, floor: 4, daysAgo: 8 },
-  { id: "MP-10237", adv: "adv-lusailhomes", purpose: "sale", type: "villa", zone: "lusail", beds: 6, baths: 7, area: 520, price: 7800000, furnishing: "unfurnished", title: { en: "Standalone 6BR villa with private pool, Fox Hills", ar: "فيلا مستقلة 6 غرف بمسبح خاص، فوكس هيلز" }, amenities: ["pool", "garden", "security", "covered_parking", "central_ac"], promotion: "featured", maid: true, suitability: "family", daysAgo: 5, jitter: [0.012, -0.01] },
-  { id: "MP-10238", adv: "adv-ahmed", purpose: "rent", type: "apartment", zone: "binmahmoud", beds: 2, baths: 2, area: 110, price: 6800, furnishing: "semi", title: { en: "Owner direct: 2BR in Bin Mahmoud, no commission", ar: "من المالك مباشرة: شقة غرفتين في بن محمود بدون عمولة" }, amenities: ["elevator", "central_ac", "covered_parking"], suitability: "family", daysAgo: 2, floor: 3 },
-  { id: "MP-10239", adv: "adv-ahmed", purpose: "rent", type: "villa", zone: "alwakrah", beds: 4, baths: 5, area: 380, price: 13500, furnishing: "unfurnished", title: { en: "Spacious 4BR villa near Al Wakrah beach", ar: "فيلا واسعة 4 غرف قرب شاطئ الوكرة" }, amenities: ["garden", "covered_parking", "central_ac"], maid: true, pets: true, suitability: "family", daysAgo: 9 },
-  { id: "MP-10240", adv: "adv-dohaprime", purpose: "rent", type: "apartment", zone: "msheireb", beds: 1, baths: 2, area: 90, price: 9200, furnishing: "furnished", title: { en: "Designer 1BR in Msheireb Downtown", ar: "شقة غرفة نوم بتصميم راقٍ في مشيرب داون تاون" }, amenities: ["gym", "metro", "concierge", "security", "central_ac"], floor: 6, daysAgo: 1, utilities: true },
-  { id: "MP-10241", adv: "adv-pearlgate", purpose: "rent", type: "townhouse", zone: "pearl", beds: 3, baths: 4, area: 260, price: 19000, furnishing: "semi", title: { en: "3BR townhouse with private beach, Qanat Quartier", ar: "تاون هاوس 3 غرف مع شاطئ خاص، قناة كوارتييه" }, amenities: ["beach", "pool", "security", "garden", "central_ac"], view: { en: "Canal view", ar: "إطلالة على القناة" }, maid: true, daysAgo: 7, jitter: [-0.004, -0.006] },
-  { id: "MP-10242", adv: "adv-dohaprime", purpose: "rent", type: "villa", zone: "algharrafa", beds: 4, baths: 5, area: 400, price: 16500, furnishing: "unfurnished", title: { en: "4BR compound villa in Al Gharrafa, family friendly", ar: "فيلا 4 غرف في كمباوند بالغرافة، مناسبة للعائلات" }, amenities: ["pool", "gym", "kids", "security", "covered_parking"], suitability: "family", maid: true, daysAgo: 10 },
-  { id: "MP-10243", adv: "adv-lusailhomes", purpose: "sale", type: "apartment", zone: "lusail", beds: 2, baths: 3, area: 140, price: 1650000, furnishing: "unfurnished", title: { en: "Freehold 2BR in Lusail Marina, payment plan", ar: "شقة تملك حر غرفتين في مارينا لوسيل مع خطة سداد" }, amenities: ["pool", "gym", "metro", "elevator"], view: { en: "Partial sea view", ar: "إطلالة جزئية على البحر" }, floor: 18, daysAgo: 12, jitter: [-0.012, 0.018] },
-  { id: "MP-10244", adv: "adv-pearlgate", purpose: "rent", type: "penthouse", zone: "westbay", beds: 4, baths: 5, area: 380, price: 38000, furnishing: "furnished", title: { en: "Luxury 4BR penthouse with private terrace, West Bay", ar: "بنتهاوس فاخر 4 غرف بتراس خاص، الخليج الغربي" }, amenities: ["pool", "gym", "concierge", "sauna", "security", "central_ac"], view: { en: "Panoramic sea and city view", ar: "إطلالة بانورامية على البحر والمدينة" }, promotion: "premium", floor: 41, daysAgo: 2, maid: true, jitter: [0.004, 0.003] },
-  { id: "MP-10245", adv: "adv-sara", purpose: "rent", type: "apartment", zone: "alduhail", beds: 3, baths: 3, area: 160, price: 8500, furnishing: "unfurnished", title: { en: "Family 3BR in Al Duhail with balcony", ar: "شقة عائلية 3 غرف في الدحيل مع شرفة" }, amenities: ["elevator", "central_ac", "covered_parking", "kids"], suitability: "family", floor: 2, daysAgo: 11 },
-  { id: "MP-10246", adv: "adv-sara", purpose: "rent", type: "apartment", zone: "oldairport", beds: 2, baths: 2, area: 105, price: 5900, furnishing: "unfurnished", title: { en: "Affordable 2BR in Old Airport, close to schools", ar: "شقة غرفتين بسعر مناسب في المطار القديم قرب المدارس" }, amenities: ["elevator", "central_ac"], suitability: "any", floor: 5, daysAgo: 13 },
-  { id: "MP-10247", adv: "adv-dohaprime", purpose: "sale", type: "villa", zone: "alwaab", beds: 5, baths: 6, area: 500, price: 5200000, furnishing: "unfurnished", title: { en: "5BR standalone villa for sale in Al Waab", ar: "فيلا مستقلة 5 غرف للبيع في الوعب" }, amenities: ["garden", "covered_parking", "central_ac", "security"], maid: true, suitability: "family", daysAgo: 15, jitter: [0.006, 0.01] },
-  { id: "MP-10248", adv: "adv-lusailhomes", purpose: "rent", type: "apartment", zone: "lusail", beds: 3, baths: 4, area: 175, price: 11000, furnishing: "semi", title: { en: "3BR in Fox Hills with community park", ar: "شقة 3 غرف في فوكس هيلز مع حديقة مجتمعية" }, amenities: ["pool", "gym", "kids", "elevator", "central_ac"], suitability: "family", floor: 5, daysAgo: 3, jitter: [0.01, -0.012] },
-  { id: "MP-10249", adv: "adv-ahmed", purpose: "rent", type: "villa", zone: "ainkhaled", beds: 6, baths: 7, area: 600, price: 20000, furnishing: "unfurnished", title: { en: "Large 6BR villa with majlis, Ain Khaled", ar: "فيلا كبيرة 6 غرف مع مجلس، عين خالد" }, amenities: ["garden", "covered_parking", "central_ac"], maid: true, suitability: "family", daysAgo: 6, extra: { en: "Separate majlis with its own entrance.", ar: "مجلس منفصل بمدخل خاص." } },
-  { id: "MP-10250", adv: "adv-dohaprime", purpose: "rent", type: "office", zone: "westbay", beds: 0, baths: 2, area: 180, price: 27000, furnishing: "furnished", title: { en: "Fitted office space in West Bay, 180 sqm", ar: "مكتب مجهز في الخليج الغربي، 180 متر مربع" }, amenities: ["metro", "security", "elevator", "central_ac", "covered_parking"], suitability: "any", floor: 28, daysAgo: 4, jitter: [-0.005, 0.004] },
-  { id: "MP-10251", adv: "adv-pearlgate", purpose: "rent", type: "apartment", zone: "pearl", beds: 1, baths: 2, area: 95, price: 8800, furnishing: "furnished", title: { en: "Furnished 1BR in Medina Centrale, bills included", ar: "شقة غرفة نوم مفروشة في المدينة سنترال شاملة الفواتير" }, amenities: ["pool", "gym", "security", "central_ac", "elevator"], utilities: true, floor: 3, daysAgo: 1, jitter: [-0.006, 0.004] },
-  { id: "MP-10252", adv: "adv-lusailhomes", purpose: "sale", type: "townhouse", zone: "lusail", beds: 3, baths: 4, area: 280, price: 3100000, furnishing: "unfurnished", title: { en: "3BR townhouse in Lusail Waterfront, off-plan handover 2027", ar: "تاون هاوس 3 غرف في واجهة لوسيل البحرية، تسليم 2027" }, amenities: ["pool", "security", "garden", "kids"], suitability: "family", daysAgo: 14, jitter: [-0.008, 0.012] },
+  { id: "AQ-10231", adv: "adv-pearlgate", purpose: "rent", type: "apartment", zone: "pearl", beds: 2, baths: 3, area: 135, price: 12500, furnishing: "furnished", title: { en: "Sea-view 2BR in Porto Arabia, fully furnished", ar: "شقة غرفتين بإطلالة بحرية في بورتو أرابيا، مفروشة بالكامل" }, amenities: ["pool", "gym", "beach", "security", "concierge", "central_ac"], view: { en: "Full sea view", ar: "إطلالة بحرية كاملة" }, building: { en: "Porto Arabia Tower 12", ar: "برج بورتو أرابيا 12" }, promotion: "premium", floor: 14, daysAgo: 2, utilities: true, extra: { en: "Wraparound balcony overlooking the marina and yachts.", ar: "شرفة واسعة تطل على المارينا واليخوت." } },
+  { id: "AQ-10232", adv: "adv-lusailhomes", purpose: "rent", type: "apartment", zone: "lusail", beds: 1, baths: 2, area: 85, price: 7200, furnishing: "semi", title: { en: "Modern 1BR at Lusail Marina, near tram", ar: "شقة غرفة نوم حديثة في مارينا لوسيل قرب الترام" }, amenities: ["pool", "gym", "metro", "elevator", "central_ac"], view: { en: "Marina view", ar: "إطلالة على المارينا" }, floor: 9, daysAgo: 4 },
+  { id: "AQ-10233", adv: "adv-pearlgate", purpose: "sale", type: "apartment", zone: "pearl", beds: 3, baths: 4, area: 210, price: 3450000, furnishing: "unfurnished", title: { en: "Freehold 3BR + maid in Viva Bahriya", ar: "شقة تملك حر 3 غرف + غرفة خادمة في فيفا بحرية" }, amenities: ["pool", "gym", "beach", "security", "kids", "central_ac"], view: { en: "Beach view", ar: "إطلالة على الشاطئ" }, building: { en: "Viva Bahriya Tower 21", ar: "فيفا بحرية برج 21" }, promotion: "featured", maid: true, floor: 7, daysAgo: 6 },
+  { id: "AQ-10234", adv: "adv-dohaprime", purpose: "rent", type: "villa", zone: "alwaab", beds: 5, baths: 6, area: 450, price: 22000, furnishing: "unfurnished", title: { en: "Compound villa 5BR with shared pool, Al Waab", ar: "فيلا 5 غرف في كمباوند مع مسبح مشترك، الوعب" }, amenities: ["pool", "gym", "security", "kids", "garden", "covered_parking"], promotion: "featured", maid: true, pets: true, suitability: "family", daysAgo: 3, extra: { en: "Gated compound minutes from Villaggio and Aspire Park.", ar: "كمباوند مسور على بعد دقائق من فيلاجيو وحديقة أسباير." } },
+  { id: "AQ-10235", adv: "adv-dohaprime", purpose: "rent", type: "apartment", zone: "westbay", beds: 2, baths: 2, area: 120, price: 10500, furnishing: "furnished", title: { en: "Furnished 2BR in West Bay tower, bills included", ar: "شقة غرفتين مفروشة في برج بالخليج الغربي شاملة الفواتير" }, amenities: ["pool", "gym", "metro", "security", "elevator", "central_ac"], view: { en: "City skyline view", ar: "إطلالة على أبراج المدينة" }, utilities: true, floor: 22, daysAgo: 1 },
+  { id: "AQ-10236", adv: "adv-sara", purpose: "rent", type: "studio", zone: "alsadd", beds: 0, baths: 1, area: 45, price: 4300, furnishing: "furnished", title: { en: "Cosy furnished studio next to Al Sadd Metro", ar: "استوديو مفروش بجوار مترو السد" }, amenities: ["metro", "elevator", "central_ac", "security"], suitability: "bachelor", utilities: true, floor: 4, daysAgo: 8 },
+  { id: "AQ-10237", adv: "adv-lusailhomes", purpose: "sale", type: "villa", zone: "lusail", beds: 6, baths: 7, area: 520, price: 7800000, furnishing: "unfurnished", title: { en: "Standalone 6BR villa with private pool, Fox Hills", ar: "فيلا مستقلة 6 غرف بمسبح خاص، فوكس هيلز" }, amenities: ["pool", "garden", "security", "covered_parking", "central_ac"], promotion: "featured", maid: true, suitability: "family", daysAgo: 5, jitter: [0.012, -0.01] },
+  { id: "AQ-10238", adv: "adv-ahmed", purpose: "rent", type: "apartment", zone: "binmahmoud", beds: 2, baths: 2, area: 110, price: 6800, furnishing: "semi", title: { en: "Owner direct: 2BR in Bin Mahmoud, no commission", ar: "من المالك مباشرة: شقة غرفتين في بن محمود بدون عمولة" }, amenities: ["elevator", "central_ac", "covered_parking"], suitability: "family", daysAgo: 2, floor: 3 },
+  { id: "AQ-10239", adv: "adv-ahmed", purpose: "rent", type: "villa", zone: "alwakrah", beds: 4, baths: 5, area: 380, price: 13500, furnishing: "unfurnished", title: { en: "Spacious 4BR villa near Al Wakrah beach", ar: "فيلا واسعة 4 غرف قرب شاطئ الوكرة" }, amenities: ["garden", "covered_parking", "central_ac"], maid: true, pets: true, suitability: "family", daysAgo: 9 },
+  { id: "AQ-10240", adv: "adv-dohaprime", purpose: "rent", type: "apartment", zone: "msheireb", beds: 1, baths: 2, area: 90, price: 9200, furnishing: "furnished", title: { en: "Designer 1BR in Msheireb Downtown", ar: "شقة غرفة نوم بتصميم راقٍ في مشيرب داون تاون" }, amenities: ["gym", "metro", "concierge", "security", "central_ac"], floor: 6, daysAgo: 1, utilities: true },
+  { id: "AQ-10241", adv: "adv-pearlgate", purpose: "rent", type: "townhouse", zone: "pearl", beds: 3, baths: 4, area: 260, price: 19000, furnishing: "semi", title: { en: "3BR townhouse with private beach, Qanat Quartier", ar: "تاون هاوس 3 غرف مع شاطئ خاص، قناة كوارتييه" }, amenities: ["beach", "pool", "security", "garden", "central_ac"], view: { en: "Canal view", ar: "إطلالة على القناة" }, maid: true, daysAgo: 7, jitter: [-0.004, -0.006] },
+  { id: "AQ-10242", adv: "adv-dohaprime", purpose: "rent", type: "villa", zone: "algharrafa", beds: 4, baths: 5, area: 400, price: 16500, furnishing: "unfurnished", title: { en: "4BR compound villa in Al Gharrafa, family friendly", ar: "فيلا 4 غرف في كمباوند بالغرافة، مناسبة للعائلات" }, amenities: ["pool", "gym", "kids", "security", "covered_parking"], suitability: "family", maid: true, daysAgo: 10 },
+  { id: "AQ-10243", adv: "adv-lusailhomes", purpose: "sale", type: "apartment", zone: "lusail", beds: 2, baths: 3, area: 140, price: 1650000, furnishing: "unfurnished", title: { en: "Freehold 2BR in Lusail Marina, payment plan", ar: "شقة تملك حر غرفتين في مارينا لوسيل مع خطة سداد" }, amenities: ["pool", "gym", "metro", "elevator"], view: { en: "Partial sea view", ar: "إطلالة جزئية على البحر" }, floor: 18, daysAgo: 12, jitter: [-0.012, 0.018] },
+  { id: "AQ-10244", adv: "adv-pearlgate", purpose: "rent", type: "penthouse", zone: "westbay", beds: 4, baths: 5, area: 380, price: 38000, furnishing: "furnished", title: { en: "Luxury 4BR penthouse with private terrace, West Bay", ar: "بنتهاوس فاخر 4 غرف بتراس خاص، الخليج الغربي" }, amenities: ["pool", "gym", "concierge", "sauna", "security", "central_ac"], view: { en: "Panoramic sea and city view", ar: "إطلالة بانورامية على البحر والمدينة" }, promotion: "premium", floor: 41, daysAgo: 2, maid: true, jitter: [0.004, 0.003] },
+  { id: "AQ-10245", adv: "adv-sara", purpose: "rent", type: "apartment", zone: "alduhail", beds: 3, baths: 3, area: 160, price: 8500, furnishing: "unfurnished", title: { en: "Family 3BR in Al Duhail with balcony", ar: "شقة عائلية 3 غرف في الدحيل مع شرفة" }, amenities: ["elevator", "central_ac", "covered_parking", "kids"], suitability: "family", floor: 2, daysAgo: 11 },
+  { id: "AQ-10246", adv: "adv-sara", purpose: "rent", type: "apartment", zone: "oldairport", beds: 2, baths: 2, area: 105, price: 5900, furnishing: "unfurnished", title: { en: "Affordable 2BR in Old Airport, close to schools", ar: "شقة غرفتين بسعر مناسب في المطار القديم قرب المدارس" }, amenities: ["elevator", "central_ac"], suitability: "any", floor: 5, daysAgo: 13 },
+  { id: "AQ-10247", adv: "adv-dohaprime", purpose: "sale", type: "villa", zone: "alwaab", beds: 5, baths: 6, area: 500, price: 5200000, furnishing: "unfurnished", title: { en: "5BR standalone villa for sale in Al Waab", ar: "فيلا مستقلة 5 غرف للبيع في الوعب" }, amenities: ["garden", "covered_parking", "central_ac", "security"], maid: true, suitability: "family", daysAgo: 15, jitter: [0.006, 0.01] },
+  { id: "AQ-10248", adv: "adv-lusailhomes", purpose: "rent", type: "apartment", zone: "lusail", beds: 3, baths: 4, area: 175, price: 11000, furnishing: "semi", title: { en: "3BR in Fox Hills with community park", ar: "شقة 3 غرف في فوكس هيلز مع حديقة مجتمعية" }, amenities: ["pool", "gym", "kids", "elevator", "central_ac"], suitability: "family", floor: 5, daysAgo: 3, jitter: [0.01, -0.012] },
+  { id: "AQ-10249", adv: "adv-ahmed", purpose: "rent", type: "villa", zone: "ainkhaled", beds: 6, baths: 7, area: 600, price: 20000, furnishing: "unfurnished", title: { en: "Large 6BR villa with majlis, Ain Khaled", ar: "فيلا كبيرة 6 غرف مع مجلس، عين خالد" }, amenities: ["garden", "covered_parking", "central_ac"], maid: true, suitability: "family", daysAgo: 6, extra: { en: "Separate majlis with its own entrance.", ar: "مجلس منفصل بمدخل خاص." } },
+  { id: "AQ-10250", adv: "adv-dohaprime", purpose: "rent", type: "office", zone: "westbay", beds: 0, baths: 2, area: 180, price: 27000, furnishing: "furnished", title: { en: "Fitted office space in West Bay, 180 sqm", ar: "مكتب مجهز في الخليج الغربي، 180 متر مربع" }, amenities: ["metro", "security", "elevator", "central_ac", "covered_parking"], suitability: "any", floor: 28, daysAgo: 4, jitter: [-0.005, 0.004] },
+  { id: "AQ-10251", adv: "adv-pearlgate", purpose: "rent", type: "apartment", zone: "pearl", beds: 1, baths: 2, area: 95, price: 8800, furnishing: "furnished", title: { en: "Furnished 1BR in Medina Centrale, bills included", ar: "شقة غرفة نوم مفروشة في المدينة سنترال شاملة الفواتير" }, amenities: ["pool", "gym", "security", "central_ac", "elevator"], utilities: true, floor: 3, daysAgo: 1, jitter: [-0.006, 0.004] },
+  { id: "AQ-10252", adv: "adv-lusailhomes", purpose: "sale", type: "townhouse", zone: "lusail", beds: 3, baths: 4, area: 280, price: 3100000, furnishing: "unfurnished", title: { en: "3BR townhouse in Lusail Waterfront, off-plan handover 2027", ar: "تاون هاوس 3 غرف في واجهة لوسيل البحرية، تسليم 2027" }, amenities: ["pool", "security", "garden", "kids"], suitability: "family", daysAgo: 14, jitter: [-0.008, 0.012] },
   // Moderation queue seeds (pending, with deliberate issues for auto-checks)
-  { id: "MP-10253", adv: "adv-omar", purpose: "rent", type: "apartment", zone: "alsadd", beds: 2, baths: 2, area: 115, price: 2500, furnishing: "furnished", title: { en: "2BR furnished Al Sadd URGENT cheap", ar: "شقة غرفتين مفروشة السد عاجل رخيص" }, amenities: ["elevator"], status: "pending", daysAgo: 0, permit: null, descOverride: { en: "Very cheap furnished 2BR in Al Sadd. Call me directly on 5590 1020 or WhatsApp, no agents.", ar: "شقة غرفتين مفروشة رخيصة جداً في السد. اتصل مباشرة على 5590 1020 أو واتساب، بدون وسطاء." } },
-  { id: "MP-10254", adv: "adv-gulfkey", purpose: "rent", type: "villa", zone: "alwaab", beds: 5, baths: 6, area: 450, price: 21500, furnishing: "unfurnished", title: { en: "Compound villa 5BR with shared pool, Al Waab", ar: "فيلا 5 غرف في كمباوند مع مسبح مشترك، الوعب" }, amenities: ["pool", "gym", "security", "kids"], status: "pending", daysAgo: 0 },
-  { id: "MP-10255", adv: "adv-gulfkey", purpose: "sale", type: "apartment", zone: "pearl", beds: 2, baths: 3, area: 150, price: 2350000, furnishing: "semi", title: { en: "2BR in Abraj Quartier with marina view", ar: "شقة غرفتين في أبراج كوارتييه بإطلالة على المارينا" }, amenities: ["pool", "gym", "beach", "security"], status: "pending", daysAgo: 1, permit: null, jitter: [0.005, -0.004] },
+  { id: "AQ-10253", adv: "adv-omar", purpose: "rent", type: "apartment", zone: "alsadd", beds: 2, baths: 2, area: 115, price: 2500, furnishing: "furnished", title: { en: "2BR furnished Al Sadd URGENT cheap", ar: "شقة غرفتين مفروشة السد عاجل رخيص" }, amenities: ["elevator"], status: "pending", daysAgo: 0, permit: null, descOverride: { en: "Very cheap furnished 2BR in Al Sadd. Call me directly on 5590 1020 or WhatsApp, no agents.", ar: "شقة غرفتين مفروشة رخيصة جداً في السد. اتصل مباشرة على 5590 1020 أو واتساب، بدون وسطاء." } },
+  { id: "AQ-10254", adv: "adv-gulfkey", purpose: "rent", type: "villa", zone: "alwaab", beds: 5, baths: 6, area: 450, price: 21500, furnishing: "unfurnished", title: { en: "Compound villa 5BR with shared pool, Al Waab", ar: "فيلا 5 غرف في كمباوند مع مسبح مشترك، الوعب" }, amenities: ["pool", "gym", "security", "kids"], status: "pending", daysAgo: 0 },
+  { id: "AQ-10255", adv: "adv-gulfkey", purpose: "sale", type: "apartment", zone: "pearl", beds: 2, baths: 3, area: 150, price: 2350000, furnishing: "semi", title: { en: "2BR in Abraj Quartier with marina view", ar: "شقة غرفتين في أبراج كوارتييه بإطلالة على المارينا" }, amenities: ["pool", "gym", "beach", "security"], status: "pending", daysAgo: 1, permit: null, jitter: [0.005, -0.004] },
 ];
 
 const NOW = new Date("2026-10-24T09:00:00+03:00").getTime();

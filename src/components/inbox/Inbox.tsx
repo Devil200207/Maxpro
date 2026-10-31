@@ -28,6 +28,8 @@ import { useLang } from "@/lib/useLang";
 import { toast } from "@/components/Toaster";
 import { Badge, btn, Card, cn, input, ReqTag } from "@/components/ui";
 import { channelMeta, ChannelIcon, downloadCsv, useNow } from "./channel";
+import { BasicInbox } from "./BasicInbox";
+import { StageBadge, useStage } from "@/lib/stage";
 
 const ME = "Layla (you)";
 const AGENTS = [ME, "Omar", "Ravi"];
@@ -86,7 +88,13 @@ function SlaChip({ c, now }: { c: Conversation; now: number | null }) {
   );
 }
 
+/** S1 shows the basic enquiry list; the full shared inbox is Stage 2 (FR-WAP-07). */
 export function Inbox() {
+  const { visible } = useStage();
+  return visible("S2") ? <SharedInbox /> : <BasicInbox />;
+}
+
+function SharedInbox() {
   const { lang, t, p } = useLang();
   const { state, update } = useStore();
   const now = useNow(1000);
@@ -121,7 +129,7 @@ export function Inbox() {
     update((s) => ({ ...s, conversations: s.conversations.map((c) => (c.id === id ? fn(c) : c)) }));
 
   const exportCsv = () =>
-    downloadCsv("maxpro-conversations.csv", [
+    downloadCsv("aqarpro-conversations.csv", [
       ["id", "channel", "customer", "phone", "listing", "status", "assignee", "tags", "source", "created", "updated", "messages"],
       ...list.map((c) => [c.id, c.channel, c.customer.name, c.customer.phone, c.listingId, c.status, c.assignee, c.tags.join("|"), c.source, c.createdAt, c.updatedAt, c.messages.length]),
     ]);
@@ -139,6 +147,7 @@ export function Inbox() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold tracking-tight text-stone-900">{t("Support inbox", "صندوق الدعم")}</h1>
+          <StageBadge s="S2" />
           <ReqTag id="FR-WAP-07" />
           <ReqTag id="WP-SUP-09" />
         </div>

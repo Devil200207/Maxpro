@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowRight, Building2, Inbox, ListChecks, MessageCircle, UserPlus, Wallet } from "lucide-react";
-import { plans, type ListingStatus } from "@/lib/data";
+import { ArrowRight, BrainCircuit, Building2, Inbox, ListChecks, MessageCircle, Network, UserPlus, Wallet } from "lucide-react";
+import { planById, plans, type ListingStatus } from "@/lib/data";
+import { portals } from "@/lib/portals";
 import { num, qar, timeAgo } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { useLang } from "@/lib/useLang";
@@ -50,6 +51,24 @@ export function Overview({ go }: { go: (t: AdminTab) => void }) {
   }));
   const mrr = revenue.reduce((a, r) => a + r.mrr, 0);
   const maxRev = Math.max(...revenue.map((r) => r.mrr));
+
+  // FR-ADM-01: portal publishing status and AI usage
+  const portalStats = portals.map((pt) => {
+    const pl = state.portalListings.filter((x) => x.portalId === pt.id);
+    return {
+      pt,
+      published: pl.filter((x) => x.status === "published").length,
+      inFlight: pl.filter((x) => ["queued", "publishing", "ready"].includes(x.status)).length,
+      issues: pl.filter((x) => ["needs_fix", "failed", "timeout"].includes(x.status)).length,
+    };
+  });
+  const jobs24 = state.publishJobs.length;
+  const jobsOk = state.publishJobs.filter((j) => j.status === "succeeded").length;
+  const aiTotal = state.aiUsage.reduce((a, u) => a + u.credits, 0);
+  const aiByFeature = Object.entries(
+    state.aiUsage.reduce<Record<string, number>>((m, u) => ({ ...m, [u.feature]: (m[u.feature] ?? 0) + u.credits }), {}),
+  ).sort((a, b) => b[1] - a[1]);
+  const aiQuota = state.advertisers.reduce((a, adv) => a + (state.aiUsage.some((u) => u.orgId === adv.orgId) ? planById(adv.planId).quotas.aiCredits : 0), 0);
 
   const counts = STATUS_META.map((s) => ({ ...s, n: state.listings.filter((l) => l.status === s.id).length })).filter((s) => s.n > 0 || s.id === "pending");
   const maxCount = Math.max(1, ...counts.map((c) => c.n));
@@ -112,6 +131,64 @@ export function Overview({ go }: { go: (t: AdminTab) => void }) {
             <line x1="20" y1="130" x2="390" y2="130" className="stroke-stone-200" />
           </svg>
           <p className="text-[11px] text-stone-400">{t("QAR / month · sample subscriber counts", "ر.ق شهرياً · أعداد مشتركين تجريبية")}</p>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-2 font-semibold text-stone-900">
+              <Network className="h-4 w-4 text-sky-600" />
+              {t("Portal publishing status", "حالة النشر على البوابات")}
+            </h3>
+            <button onClick={() => go("hub")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">
+              {t("Open Hub", "فتح المركز")} <ArrowRight className="flip-rtl h-3 w-3" />
+            </button>
+          </div>
+          <div className="mt-4 space-y-3">
+            {portalStats.map(({ pt, published, inFlight, issues }) => (
+              <div key={pt.id} className="flex items-center gap-3 text-sm">
+                <span className="grid h-8 w-8 place-items-center rounded-lg text-xs font-bold text-white" style={{ background: pt.color }}>
+                  {pt.short}
+                </span>
+                <span className="flex-1 font-medium text-stone-800">{p(pt.name)}</span>
+                <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{published} {t("live", "منشور")}</span>
+                <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-600">{inFlight} {t("in flight", "قيد التنفيذ")}</span>
+                <span className={cn("rounded px-2 py-0.5 text-xs font-semibold", issues ? "bg-amber-50 text-amber-800" : "bg-stone-50 text-stone-400")}>
+                  {issues} {t("issues", "مشكلات")}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-stone-500">
+            {jobsOk}/{jobs24} {t("publishing jobs succeeded · retries use idempotency keys", "مهام نشر ناجحة · إعادة المحاولة بمفاتيح عدم التكرار")}
+          </p>
+        </Card>
+        <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-2 font-semibold text-stone-900">
+              <BrainCircuit className="h-4 w-4 text-violet-600" />
+              {t("AI usage this month", "استخدام الذكاء الاصطناعي هذا الشهر")}
+            </h3>
+            <button onClick={() => go("ai")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">
+              {t("AI console", "وحدة الذكاء")} <ArrowRight className="flip-rtl h-3 w-3" />
+            </button>
+          </div>
+          <div className="mt-2 text-2xl font-bold text-stone-900">
+            {num(aiTotal, lang)} <span className="text-sm font-medium text-stone-500">/ {num(aiQuota, lang)} {t("credits in active plans", "رصيد في الباقات النشطة")}</span>
+          </div>
+          <div className="mt-3 space-y-2">
+            {aiByFeature.map(([f, n]) => (
+              <div key={f} className="grid grid-cols-[120px_1fr_48px] items-center gap-3 text-xs">
+                <span className="font-mono text-stone-600">{f}</span>
+                <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+                  <div className="h-full rounded-full bg-violet-500" style={{ width: `${(n / Math.max(1, aiTotal)) * 100}%` }} />
+                </div>
+                <span className="text-end font-semibold tabular-nums">{n}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-stone-500">{t("Quotas are enforced server-side per plan (BIL-09).", "تُطبق الحصص على الخادم لكل باقة (BIL-09).")}</p>
         </Card>
       </div>
 
