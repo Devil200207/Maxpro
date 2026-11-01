@@ -34,7 +34,7 @@ const VOICE = {
 };
 
 export function AssistantWidget() {
-  const { lang, t, href } = useLang();
+  const { lang, t } = useLang();
   const pathname = usePathname();
   const { state, update } = useStore();
   const [open, setOpen] = useState(false);
@@ -307,7 +307,7 @@ export function AssistantWidget() {
                     const l = listingById(id);
                     if (!l) return null;
                     return (
-                      <Link key={id} href={href(`/listing/${id}`)} className="flex gap-3 rounded-xl border border-stone-200 bg-white p-2 shadow-sm hover:border-brand-300">
+                      <div key={id} className="flex gap-3 rounded-xl border border-stone-200 bg-white p-2 shadow-sm">
                         <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg">
                           <Image src={l.media[0].src} alt="" fill sizes="80px" className="object-cover" />
                         </div>
@@ -316,7 +316,7 @@ export function AssistantWidget() {
                           <div className="line-clamp-2 text-stone-600">{l.title[lang]}</div>
                           <div className="font-mono text-[10px] text-stone-400">{l.id}</div>
                         </div>
-                      </Link>
+                      </div>
                     );
                   })}
 

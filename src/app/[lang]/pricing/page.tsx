@@ -12,10 +12,7 @@ import {
   Lock,
   Megaphone,
   Minus,
-  RefreshCw,
   ShieldCheck,
-  Sparkles,
-  Star,
 } from "lucide-react";
 import { Badge, btn, Card, cn, input, ReqTag } from "@/components/ui";
 import { Modal } from "@/components/advertiser/Modal";
@@ -47,9 +44,6 @@ export default function PricingPage() {
   const sub = useSub();
 
   const addOns = [
-    { icon: Star, name: t("Featured slot", "خانة مميزة"), price: t("QAR 150 / listing / 14 days", "150 ر.ق / إعلان / 14 يوم"), desc: t("Pinned above organic results with a Featured badge.", "يظهر أعلى النتائج مع شارة مميز.") },
-    { icon: RefreshCw, name: t("Bump to top", "رفع للأعلى"), price: t("QAR 25 / bump", "25 ر.ق / رفع"), desc: t("Refreshes the listing date so it reappears first.", "يحدّث تاريخ الإعلان ليظهر أولاً.") },
-    { icon: Sparkles, name: t("Homepage banner", "بانر الصفحة الرئيسية"), price: t("QAR 2,500 / week", "2,500 ر.ق / أسبوع"), desc: t("Scheduled banner with impression and click reporting.", "بانر مجدول مع تقارير المشاهدات والنقرات.") },
     { icon: Megaphone, name: t("Managed Meta campaign", "حملة ميتا مُدارة"), price: t("Ad spend + 20% service fee", "تكلفة الإعلان + 20٪ رسوم خدمة"), desc: t("We build, run and report your Facebook & Instagram campaign. Spend and fee billed as separate lines.", "ننشئ ونشغّل حملتك على فيسبوك وإنستغرام. التكلفة والرسوم بندان منفصلان.") },
   ];
 
@@ -129,9 +123,7 @@ export default function PricingPage() {
               </div>
               <ul className="mt-5 space-y-2 text-sm text-stone-700">
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.listings, lang)} {t("live listings", "إعلان منشور")}</li>
-                <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.featuredCredits, lang)} {t("featured credits / month", "رصيد تمييز / شهر")}</li>
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.seats, lang)} {t("team seats", "مستخدم")}</li>
-                <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.bumpsPerMonth, lang)} {t("bumps / month", "رفع / شهر")}</li>
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{num(pl.quotas.aiCredits, lang)} {t("AI credits / month", "رصيد ذكاء / شهر")}</li>
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-brand-600" />{pl.quotas.portals ? `${num(pl.quotas.portals, lang)} ${t("portal connections", "ربط بوابات")}` : t("No portal publishing", "بدون نشر على البوابات")}</li>
               </ul>

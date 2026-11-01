@@ -13,6 +13,6 @@ export function useLang() {
     isAr: lang === "ar",
     t: (en: string, ar: string) => (lang === "ar" ? ar : en),
     p: (b: Bi) => b[lang],
-    href: (path: string) => `/${lang}${path === "/" ? "" : path}`,
+    href: (path: string) => `/${lang}${path === "/" ? "" : path.startsWith("/#") ? path.slice(1) : path}`,
   };
 }

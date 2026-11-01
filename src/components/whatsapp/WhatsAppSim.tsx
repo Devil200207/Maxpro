@@ -632,7 +632,7 @@ export function WhatsAppSim() {
               <div>
                 <div className="text-stone-400">{t("Listing in context", "العقار الحالي")}</div>
                 {ctx ? (
-                  <Link href={href(`/listing/${ctx.id}`)} className="mt-1 flex items-center gap-2 hover:text-brand-700">
+                  <Link href={href(`/hub?listing=${ctx.id}`)} className="mt-1 flex items-center gap-2 hover:text-brand-700">
                     <span className="relative h-10 w-14 shrink-0 overflow-hidden rounded">
                       <Image src={ctx.media[0].src} alt="" fill sizes="56px" className="object-cover" />
                     </span>

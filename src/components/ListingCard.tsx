@@ -27,7 +27,7 @@ export function ListingCard({ l, compact = false, onHover }: { l: Listing; compa
         l.promotion === "premium" ? "border-brand-300 ring-1 ring-brand-200" : "border-stone-200",
       )}
     >
-      <Link href={href(`/listing/${l.id}`)} className="relative block aspect-[4/3] overflow-hidden bg-stone-100">
+      <Link href={href(`/hub?listing=${l.id}`)} className="relative block aspect-[4/3] overflow-hidden bg-stone-100">
         <Image src={cover.src} alt={p(l.title)} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition duration-500 group-hover:scale-105" />
         <div className="absolute start-3 top-3 flex flex-wrap gap-1.5">
           {l.promotion === "premium" && (
@@ -58,7 +58,7 @@ export function ListingCard({ l, compact = false, onHover }: { l: Listing; compa
         <div className="text-lg font-bold text-stone-900">
           {l.purpose === "sale" ? compactQar(l.price, lang) : priceLabel(l.price, l.purpose, lang)}
         </div>
-        <Link href={href(`/listing/${l.id}`)} className="mt-1 line-clamp-2 text-sm font-medium text-stone-800 hover:text-brand-700">
+        <Link href={href(`/hub?listing=${l.id}`)} className="mt-1 line-clamp-2 text-sm font-medium text-stone-800 hover:text-brand-700">
           {p(l.title)}
         </Link>
         <div className="mt-2 flex items-center gap-1 text-xs text-stone-500">

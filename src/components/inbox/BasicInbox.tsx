@@ -74,7 +74,7 @@ export function BasicInbox() {
                   <td className="max-w-xs px-4 py-3 text-stone-700">{firstMsg(c)}</td>
                   <td className="px-4 py-3">
                     {c.listingId && (
-                      <Link href={`/${lang}/listing/${c.listingId}`} className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-brand-600">
+                      <Link href={`/${lang}/hub?listing=${c.listingId}`} className="inline-flex items-center gap-1 font-mono text-xs font-semibold text-brand-600">
                         {c.listingId}
                         <ExternalLink className="h-3 w-3" />
                       </Link>

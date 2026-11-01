@@ -10,20 +10,20 @@ export function Footer() {
   const { reset } = useStore();
   const cols = [
     {
-      h: t("Property", "العقارات"),
+      h: t("Services", "الخدمات"),
       links: [
-        [t("Apartments for rent", "شقق للإيجار"), "/search?purpose=rent&type=apartment"],
-        [t("Villas for rent", "فلل للإيجار"), "/search?purpose=rent&type=villa"],
-        [t("Property for sale", "عقارات للبيع"), "/search?purpose=sale"],
-        [t("Map search", "البحث بالخريطة"), "/search?view=map"],
+        [t("AI Listing Studio", "استوديو الإعلانات الذكي"), "/advertiser/studio"],
+        [t("Portal connectors", "ربط البوابات"), "/hub"],
+        [t("Help desk AI", "مساعد الدعم الذكي"), "/whatsapp"],
+        [t("Marketing AI", "التسويق الذكي"), "/advertiser"],
       ],
     },
     {
-      h: t("Advertisers", "المعلنون"),
+      h: t("Builders & agencies", "المطورون والوكالات"),
       links: [
         [t("Plans & pricing", "الباقات والأسعار"), "/pricing"],
-        [t("Post a listing", "أضف إعلان"), "/advertiser/new"],
-        [t("Advertiser dashboard", "لوحة المعلن"), "/advertiser"],
+        [t("Get started", "ابدأ الآن"), "/register"],
+        [t("Agency dashboard", "لوحة الوكالة"), "/advertiser"],
       ],
     },
     {
@@ -42,7 +42,7 @@ export function Footer() {
         <div>
           <Logo className="h-10 w-auto" />
           <p className="mt-3 text-sm text-stone-500">
-            {t("One bilingual workspace to create, market, distribute and enquire about property in Qatar.", "مساحة عمل ثنائية اللغة لإنشاء العقارات وتسويقها ونشرها والاستفسار عنها في قطر.")}
+            {t("The bridge between builders, agencies and Qatar's property portals.", "حلقة الوصل بين المطورين والوكالات وبوابات العقارات في قطر.")}
           </p>
         </div>
         {cols.map((c) => (

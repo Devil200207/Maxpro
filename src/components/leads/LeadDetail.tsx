@@ -151,7 +151,7 @@ export function LeadDetail({ lead, now, canEdit, canAssign, onClose }: { lead: L
         {merged.length > 0 && <div className="text-[11px] text-stone-400">{t(`Includes ${merged.length} merged record(s): ${merged.map((m) => m.id).join(", ")}`, `يشمل ${merged.length} سجل مدمج: ${merged.map((m) => m.id).join("، ")}`)}</div>}
 
         {listing && (
-          <Link href={href(`/listing/${listing.id}`)} className="flex items-center gap-3 rounded-xl border border-stone-200 p-2 hover:bg-stone-50">
+          <Link href={href(`/hub?listing=${listing.id}`)} className="flex items-center gap-3 rounded-xl border border-stone-200 p-2 hover:bg-stone-50">
             <span className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg">
               <Image src={listing.media[0].src} alt="" fill sizes="64px" className="object-cover" unoptimized={listing.media[0].src.startsWith("data:")} />
             </span>

@@ -4,7 +4,6 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowUpCircle,
   BadgeCheck,
   Bot,
   CalendarClock,
@@ -20,7 +19,6 @@ import {
   Play,
   RefreshCw,
   Sparkles,
-  Star,
   TriangleAlert,
   Lock,
   Network,
@@ -191,8 +189,6 @@ export function OverviewTab() {
           </div>
           <div className="mt-4 space-y-4">
             <QuotaBar label={t("Active listings", "الإعلانات النشطة")} used={active} max={plan.quotas.listings} />
-            <QuotaBar label={t("Featured credits", "أرصدة التمييز")} used={isDemoAgency ? state.subscription.featuredUsed : 0} max={plan.quotas.featuredCredits} />
-            <QuotaBar label={t("Bumps this month", "مرات الرفع هذا الشهر")} used={isDemoAgency ? state.subscription.bumpsUsed : 0} max={plan.quotas.bumpsPerMonth} />
             <QuotaBar label={t("Team seats", "مقاعد الفريق")} used={Math.max(1, acct.members.length)} max={plan.quotas.seats} />
             <QuotaBar label={t("AI credits this month", "أرصدة الذكاء الاصطناعي هذا الشهر")} used={acct.aiUsed} max={plan.quotas.aiCredits} />
           </div>
@@ -232,12 +228,10 @@ export function ListingsTab() {
   const { lang, t, p, href } = useLang();
   const { state, update } = useStore();
   const acct = useAccount();
-  const { plan, can, role, isDemoAgency, actorName, members } = acct;
+  const { can, role, actorName, members } = acct;
   const mine = useMine();
   const [filter, setFilter] = useState<"all" | ListingStatus>("all");
   const rows = filter === "all" ? mine : mine.filter((l) => l.status === filter);
-  const featuredUsed = isDemoAgency ? state.subscription.featuredUsed : 0;
-  const bumpsUsed = isDemoAgency ? state.subscription.bumpsUsed : 0;
   const deny = reasonDisabled(t, role);
 
   const log = (action: string, target: string, detail?: string) => ({ id: uid("A"), at: new Date().toISOString(), actor: actorName, role: "advertiser" as const, action, target, detail });
@@ -262,29 +256,6 @@ export function ListingsTab() {
       audit: [log("listing.renewed", l.id, "+60 days"), ...s.audit],
     }));
     toast(t(`${l.id} renewed for 60 days`, `تم تجديد ${l.id} لمدة 60 يوماً`));
-  };
-
-  const bump = (l: Listing) => {
-    if (bumpsUsed >= plan.quotas.bumpsPerMonth) return toast(t("No bumps left this month — buy add-on", "لا توجد مرات رفع متبقية — اشترِ إضافة"));
-    update((s) => ({
-      ...s,
-      listings: s.listings.map((x) => (x.id === l.id ? { ...x, createdAt: new Date().toISOString() } : x)),
-      subscription: isDemoAgency ? { ...s.subscription, bumpsUsed: s.subscription.bumpsUsed + 1 } : s.subscription,
-      audit: [log("listing.bumped", l.id), ...s.audit],
-    }));
-    toast(t(`${l.id} bumped to the top`, `تم رفع ${l.id} للأعلى`));
-  };
-
-  const feature = (l: Listing) => {
-    if (featuredUsed >= plan.quotas.featuredCredits) return toast(t("No featured credits left on your plan", "لا توجد أرصدة تمييز متبقية في باقتك"));
-    update((s) => ({
-      ...s,
-      listings: s.listings.map((x) => (x.id === l.id ? { ...x, promotion: "featured" } : x)),
-      subscription: isDemoAgency ? { ...s.subscription, featuredUsed: s.subscription.featuredUsed + 1 } : s.subscription,
-      changeLog: [changeEntry(l.id, actorName, "promotion", l.promotion, "featured"), ...s.changeLog],
-      audit: [log("listing.featured", l.id, "1 credit used"), ...s.audit],
-    }));
-    toast(t(`${l.id} is now Featured`, `${l.id} أصبح مميزاً`));
   };
 
   const duplicate = (l: Listing) => {
@@ -339,8 +310,6 @@ export function ListingsTab() {
           </div>
           <div className="flex items-center gap-2 text-xs text-stone-500">
             {!can.seeAll && <Badge tone="violet">{t("Showing listings assigned to you", "تُعرض الإعلانات المسندة إليك")}</Badge>}
-            <Star className="h-3.5 w-3.5 text-amber-500" />
-            {plan.quotas.featuredCredits - featuredUsed} {t("featured credits", "رصيد تمييز")} · {plan.quotas.bumpsPerMonth - bumpsUsed} {t("bumps left", "رفع متبقٍ")}
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -371,7 +340,7 @@ export function ListingsTab() {
                           {l.media[0] && <Image src={l.media[0].src} alt="" fill sizes="64px" className="object-cover" />}
                         </div>
                         <div className="min-w-0">
-                          <Link href={href(`/listing/${l.id}`)} className="line-clamp-1 font-medium text-stone-900 hover:text-brand-700">
+                          <Link href={href(`/hub?listing=${l.id}`)} className="line-clamp-1 font-medium text-stone-900 hover:text-brand-700">
                             {p(l.title)}
                           </Link>
                           <div className="flex items-center gap-2 text-xs text-stone-500">
@@ -452,12 +421,6 @@ export function ListingsTab() {
                         )}
                         <IconBtn title={can.edit ? t("Renew +60 days", "تجديد 60 يوماً") : deny} disabled={!can.edit} onClick={() => renew(l)}>
                           <CalendarClock className="h-4 w-4" />
-                        </IconBtn>
-                        <IconBtn title={can.edit ? t("Bump to top", "رفع للأعلى") : deny} onClick={() => bump(l)} disabled={!can.edit || l.status !== "live"}>
-                          <ArrowUpCircle className="h-4 w-4" />
-                        </IconBtn>
-                        <IconBtn title={can.approvePublish ? t("Feature (1 credit)", "تمييز (رصيد واحد)") : deny} onClick={() => feature(l)} disabled={!can.approvePublish || l.status !== "live" || l.promotion !== "none"}>
-                          <Star className="h-4 w-4" />
                         </IconBtn>
                         <IconBtn title={can.edit ? t("Duplicate", "نسخ") : deny} disabled={!can.edit} onClick={() => duplicate(l)}>
                           <Copy className="h-4 w-4" />
@@ -726,7 +689,6 @@ export function BillingTab() {
     { d: t("Days 0–7", "الأيام 0–7"), text: t("Grace period — listings stay live", "فترة سماح — تبقى الإعلانات منشورة") },
     { d: t("Day 8", "اليوم 8"), text: t("Listings paused (never deleted) until payment", "إيقاف الإعلانات مؤقتاً (دون حذف) حتى الدفع") },
   ];
-  const featuredUsed = isDemoAgency ? state.subscription.featuredUsed : 0;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -768,7 +730,6 @@ export function BillingTab() {
           </div>
           <div className="mt-4 space-y-4">
             <QuotaBar label={t("Active listings", "الإعلانات النشطة")} used={acct.active} max={plan.quotas.listings} />
-            <QuotaBar label={t("Featured credits", "أرصدة التمييز")} used={featuredUsed} max={plan.quotas.featuredCredits} />
             <QuotaBar label={t("Team seats", "مقاعد الفريق")} used={Math.max(1, acct.members.length)} max={plan.quotas.seats} />
             <QuotaBar label={t("AI credits this month", "أرصدة الذكاء الاصطناعي")} used={acct.aiUsed} max={plan.quotas.aiCredits} />
             <QuotaBar label={t("Portal connections", "ربط البوابات")} used={state.connections.filter((c) => c.orgId === adv.orgId && c.status === "connected").length} max={plan.quotas.portals} />

@@ -3,18 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Heart, Inbox, LayoutDashboard, Languages, Menu, MessageCircle, Network, PlusCircle, Presentation, ShieldCheck, Sparkles, UserPlus, Users, X } from "lucide-react";
+import { ChevronDown, Inbox, LayoutDashboard, Languages, Menu, MessageCircle, Network, PlusCircle, Presentation, ShieldCheck, Sparkles, UserPlus, Users, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { btn, cn } from "./ui";
 import { useLang } from "@/lib/useLang";
-import { useStore } from "@/lib/store";
 import { StageBadge, StageSwitch, useStage, type Stage } from "@/lib/stage";
 
 export function Header() {
   const { lang, t, href } = useLang();
   const pathname = usePathname();
   const router = useRouter();
-  const { state } = useStore();
   const [open, setOpen] = useState(false);
   const [portals, setPortals] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -40,9 +38,9 @@ export function Header() {
   };
 
   const nav = [
-    { label: t("Rent", "إيجار"), to: "/search?purpose=rent" },
-    { label: t("Buy", "شراء"), to: "/search?purpose=sale" },
-    { label: t("Map search", "البحث بالخريطة"), to: "/search?view=map" },
+    { label: t("Services", "الخدمات"), to: "/#services" },
+    { label: t("How it works", "كيف يعمل"), to: "/#how" },
+    { label: t("Portals", "البوابات"), to: "/#portals" },
     { label: t("Pricing", "الأسعار"), to: "/pricing" },
   ];
 
@@ -101,26 +99,18 @@ export function Header() {
             )}
           </div>
 
-          {visible("S2") && (
-          <Link href={href("/search?favourites=1")} className={cn(btn.ghost, "relative")} aria-label={t("Favourites", "المفضلة")}>
-            <Heart className="h-5 w-5" />
-            {state.favourites.length > 0 && (
-              <span className="absolute -top-0.5 end-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">
-                {state.favourites.length}
-              </span>
-            )}
-          </Link>
-          )}
-
           <button onClick={switchLang} className={btn.ghost} aria-label="Switch language">
             <Languages className="h-4 w-4" />
             <span className={cn("hidden sm:inline", lang === "en" && "font-[family-name:var(--font-arabic)]")}>{lang === "en" ? "العربية" : "English"}</span>
             <span className={cn("sm:hidden", lang === "en" && "font-[family-name:var(--font-arabic)]")}>{lang === "en" ? "ع" : "EN"}</span>
           </button>
 
-          <Link href={href("/advertiser/new")} className={cn(btn.primary, "max-sm:hidden")}>
-            <PlusCircle className="h-4 w-4" />
-            {t("Post a listing", "أضف إعلان")}
+          <Link href={href("/advertiser")} className={cn(btn.ghost, "max-md:hidden")}>
+            {t("Sign in", "تسجيل الدخول")}
+          </Link>
+          <Link href={href("/register")} className={cn(btn.primary, "max-sm:hidden")}>
+            <UserPlus className="h-4 w-4" />
+            {t("Get started", "ابدأ الآن")}
           </Link>
 
           <button className={cn(btn.ghost, "lg:hidden")} onClick={() => setOpen((v) => !v)} aria-label="Menu">

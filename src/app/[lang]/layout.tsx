@@ -20,10 +20,10 @@ export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Prom
   const { lang } = await params;
   const ar = lang === "ar";
   return {
-    title: { default: ar ? "عقار برو — عقارات قطر" : "AqarPro — Qatar Property", template: "%s · AqarPro" },
+    title: { default: ar ? "عقار برو — خدمات العقارات للمطورين والوكالات" : "AqarPro — Property services for builders & agencies", template: "%s · AqarPro" },
     description: ar
-      ? "منصة عقار برو: ابحث عن شقق وفلل للإيجار والبيع في قطر، وانشر إعلاناتك بالذكاء الاصطناعي على عدة بوابات."
-      : "AqarPro: find apartments and villas for rent and sale in Qatar, and publish AI-assisted listings to multiple portals.",
+      ? "عقار برو حلقة الوصل بين المطورين والوكالات وبوابات العقارات في قطر: إعلانات بالذكاء الاصطناعي، نشر على عدة بوابات، دعم وتسويق ذكي."
+      : "AqarPro connects builders and agencies to Qatar's property portals: AI-prepared listings, multi-portal publishing, help desk AI and marketing AI.",
     alternates: { languages: { en: "/en", ar: "/ar" } },
     manifest: "/manifest.webmanifest",
   };

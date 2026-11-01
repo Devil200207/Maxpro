@@ -613,7 +613,7 @@ function ContextPane({ c, patch, now }: { c: Conversation; patch: Patch; now: nu
               {adv.verified && <BadgeCheck className="h-3.5 w-3.5 text-sky-600" />}
               {plan && <Badge className="ms-auto text-[10px]">{p(plan.name)}</Badge>}
             </div>
-            <Link href={href(`/listing/${listing.id}`)} target="_blank" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">
+            <Link href={href(`/hub?listing=${listing.id}`)} target="_blank" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">
               {t("Open listing", "فتح الإعلان")}
               <ExternalLink className="h-3 w-3" />
             </Link>

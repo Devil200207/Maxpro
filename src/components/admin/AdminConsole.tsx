@@ -9,7 +9,6 @@ import {
   Flag,
   LayoutDashboard,
   ListChecks,
-  Megaphone,
   ScrollText,
   ShieldCheck,
   SlidersHorizontal,
@@ -22,7 +21,7 @@ import { Badge, cn } from "@/components/ui";
 import { Overview } from "./Overview";
 import { ComplianceAdmin, ModerationQueue, Reports, Verification } from "./Moderation";
 import { HubDashboard } from "@/components/hub/HubDashboard";
-import { AdInventory, FeatureFlags, PlansEditor } from "./Config";
+import { FeatureFlags, PlansEditor } from "./Config";
 import { AiConsole, AuditTrail, Notifications } from "./Ops";
 
 const TABS = [
@@ -33,7 +32,6 @@ const TABS = [
   { id: "hub", icon: Network, en: "Portal Hub", ar: "مركز البوابات" },
   { id: "compliance", icon: FileCheck2, en: "Compliance", ar: "الامتثال" },
   { id: "plans", icon: SlidersHorizontal, en: "Plans & pricing", ar: "الباقات والأسعار" },
-  { id: "ads", icon: Megaphone, en: "Ad inventory", ar: "المساحات الإعلانية" },
   { id: "notifications", icon: Bell, en: "Notifications", ar: "الإشعارات" },
   { id: "ai", icon: BrainCircuit, en: "AI console", ar: "وحدة الذكاء الاصطناعي" },
   { id: "audit", icon: ScrollText, en: "Audit trail", ar: "سجل التدقيق" },
@@ -108,7 +106,6 @@ export function AdminConsole() {
           {tab === "hub" && <HubDashboard scope="admin" />}
           {tab === "compliance" && <ComplianceAdmin />}
           {tab === "plans" && <PlansEditor />}
-          {tab === "ads" && <AdInventory />}
           {tab === "notifications" && <Notifications />}
           {tab === "ai" && <AiConsole />}
           {tab === "audit" && <AuditTrail />}

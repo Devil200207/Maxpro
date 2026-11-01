@@ -63,7 +63,7 @@ const scenarios: Scenario[] = [
     stages: ["S1", "S2"],
     reqs: ["FR-WAP-02", "FR-WAP-06", "FR-WAP-03", "FR-WAP-04", "FR-WAP-08", "LED-01"],
     run: [
-      { label: ["Open listing AQ-10231", "افتح الإعلان AQ-10231"], to: "/listing/AQ-10231" },
+      { label: ["Open listing AQ-10231", "افتح الإعلان AQ-10231"], to: "/whatsapp?listing=AQ-10231" },
       { label: ["WhatsApp property pack", "ملف العقار على واتساب"], to: "/whatsapp?listing=AQ-10231&pack=1" },
       { label: ["Advertiser lead manager", "إدارة عملاء المعلن"], to: "/advertiser/leads" },
     ],
@@ -160,7 +160,7 @@ const scenarios: Scenario[] = [
     stages: ["S1", "S2"],
     reqs: ["FR-LST-09", "FR-LST-05", "FR-WAP-07", "WP-SUP-06", "WP-SUP-09", "FR-ADM-05"],
     run: [
-      { label: ["Report listing AQ-10246", "أبلغ عن الإعلان AQ-10246"], to: "/listing/AQ-10246" },
+      { label: ["Report listing AQ-10246", "أبلغ عن الإعلان AQ-10246"], to: "/admin?tab=reports" },
       { label: ["Admin → Reports", "الإدارة ← البلاغات"], to: "/admin?tab=reports" },
       { label: ["Advertiser fixes & resubmits", "المعلن يصلح ويعيد الإرسال"], to: "/advertiser" },
       { label: ["WhatsApp → ask for a person", "واتساب ← اطلب موظفاً"], to: "/whatsapp" },

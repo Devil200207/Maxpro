@@ -158,7 +158,7 @@ export function ModerationQueue() {
                         <span className="text-stone-400">{now ? timeAgo(l.createdAt, lang) : ""}</span>
                       </div>
                     </div>
-                    <Link href={href(`/listing/${l.id}`)} target="_blank" className={cn(btn.ghost, "py-1 text-xs")}>
+                    <Link href={href(`/hub?listing=${l.id}`)} target="_blank" className={cn(btn.ghost, "py-1 text-xs")}>
                       {t("Preview", "معاينة")} <ExternalLink className="h-3 w-3" />
                     </Link>
                   </div>
@@ -359,7 +359,7 @@ export function Reports() {
                       <Flag className="h-3 w-3" />
                       {p(r.reason)}
                     </Badge>
-                    <Link href={href(`/listing/${l.id}`)} target="_blank" className="font-mono text-xs font-semibold text-brand-700 hover:underline">
+                    <Link href={href(`/hub?listing=${l.id}`)} target="_blank" className="font-mono text-xs font-semibold text-brand-700 hover:underline">
                       {l.id}
                     </Link>
                     <Badge>{l.status}</Badge>
