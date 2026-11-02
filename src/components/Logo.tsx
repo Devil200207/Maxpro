@@ -4,10 +4,10 @@ import Image from "next/image";
 export function Logo({ variant = "default", className = "h-9 w-auto" }: { variant?: "default" | "white"; className?: string }) {
   return (
     <Image
-      src={variant === "white" ? "/img/logo-white.png" : "/img/logo.png"}
+      src={variant === "white" ? "/img/aqarpro-logo-white.png" : "/img/aqarpro-logo.png"}
       alt="AqarPro"
-      width={2201}
-      height={445}
+      width={1356}
+      height={330}
       priority
       className={className}
     />

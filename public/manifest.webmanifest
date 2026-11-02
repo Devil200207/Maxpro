@@ -4,6 +4,6 @@
   "start_url": "/en",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#0068e6",
-  "icons": [{ "src": "/img/icon.png", "sizes": "512x512", "type": "image/png" }]
+  "theme_color": "#13873f",
+  "icons": [{ "src": "/img/aqarpro-icon.png", "sizes": "512x512", "type": "image/png" }]
 }
